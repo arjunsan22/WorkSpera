@@ -1,0 +1,65 @@
+import mongoose from "mongoose";
+
+const UserSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+    },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+    },
+    bio: {
+      type: String,
+      default: "",
+    },
+    profileImage: {
+      type: String,
+      default: "/public/profile-default-image.png",
+    },
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    // ✅ Additional fields (WhatsApp-style)
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
+    lastSeen: {
+      type: Date,
+      default: null,
+    },
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+  },
+
+  {
+    timestamps: true, // ✅ Automatically adds createdAt & updatedAt
+  }
+);
+
+const UserModel = mongoose.models?.User || mongoose.model("User", UserSchema);
+export default UserModel;
