@@ -28,7 +28,7 @@ async function loadModels() {
 }
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = "0.0.0.0";
 const port = process.env.PORT || 3000;
 
 const app = next({ dev, hostname, port });
@@ -165,9 +165,8 @@ async function startServer() {
       });
     });
 
-    httpServer.listen(port, hostname, (err) => {
-      if (err) throw err;
-      console.log(`> Ready on http://${hostname}:${port}`);
+    httpServer.listen(port, () => {
+      console.log(`Server running on port ${port}`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);
