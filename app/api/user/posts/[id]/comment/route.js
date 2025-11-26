@@ -2,7 +2,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Post from "@/models/Post";
-
+import User from "@/models/User";
+import mongoose from "mongoose";
 export async function POST(request, { params }) {
   try {
     const session = await getServerSession(authOptions);

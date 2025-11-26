@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
@@ -97,14 +96,8 @@ export default function RegisterPage() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      // Auto-login after registration
-      const signInRes = await fetch('/api/auth/callback/credentials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
 
-      if (signInRes.ok) {
+      if (res.ok) {
         router.push('/');
       } else {
         setError('Login failed after registration');

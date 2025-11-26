@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit3, FiImage,FiArrowLeft , FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid } from 'react-icons/fi';
+import { FiEdit3,FiRefreshCw, FiImage,FiArrowLeft , FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid } from 'react-icons/fi';
 import Link from 'next/link';
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -17,7 +17,16 @@ export default function ProfilePage() {
   const [tempPost, setTempPost] = useState({ caption: '', images: [] }); // Store temporary image URLs or file objects
   const [selectedPostForEdit, setSelectedPostForEdit] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-
+const [showFollowersModal, setShowFollowersModal] = useState(false);
+const [showFollowingModal, setShowFollowingModal] = useState(false);
+const [followersList, setFollowersList] = useState([]);
+const [followingList, setFollowingList] = useState([]);
+const [loadingFollowers, setLoadingFollowers] = useState(false);
+const [loadingFollowing, setLoadingFollowing] = useState(false);
+const [selectedPost, setSelectedPost] = useState(null);
+const [commentModalOpen, setCommentModalOpen] = useState(false);
+const [newComment, setNewComment] = useState('');
+const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     if (session?.user?.id) {
       fetchProfileData();
@@ -41,6 +50,38 @@ export default function ProfilePage() {
     }
   };
 
+  const fetchFollowers = async () => {
+  if (!user?._id) return;
+  setLoadingFollowers(true);
+  try {
+    const res = await fetch(`/api/user/${user._id}/followers`);
+    const data = await res.json();
+    if (res.ok) {
+      setFollowersList(data.followers || []);
+    }
+  } catch (err) {
+    console.error('Error fetching followers:', err);
+  } finally {
+    setLoadingFollowers(false);
+  }
+};
+
+const fetchFollowing = async () => {
+  if (!user?._id) return;
+  setLoadingFollowing(true);
+  try {
+    const res = await fetch(`/api/user/${user._id}/following`);
+    const data = await res.json();
+    if (res.ok) {
+      setFollowingList(data.following || []);
+    }
+  } catch (err) {
+    console.error('Error fetching following:', err);
+  } finally {
+    setLoadingFollowing(false);
+  }
+};
+
   const openEditProfileModal = () => {
     if (user) {
       setTempUser({ name: user.name, username: user.username, bio: user.bio, profileImage: user.profileImage });
@@ -62,6 +103,30 @@ export default function ProfilePage() {
     setTempPost({ caption: '', images: [] });
     setSelectedPostForEdit(null);
   };
+//handle follow modal
+const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType) => {
+  try {
+    const res = await fetch('/api/user/follow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId }),
+    });
+    if (res.ok) {
+      // Refresh the list
+      if (listType === 'followers') {
+        fetchFollowers();
+      } else {
+        fetchFollowing();
+      }
+    } else {
+      const data = await res.json();
+      alert(data.message || 'Action failed');
+    }
+  } catch (err) {
+    alert('Network error');
+  }
+};
+
 
   const handleProfileUpdate = async () => {
     try {
@@ -282,6 +347,55 @@ export default function ProfilePage() {
     return null;
   };
 
+  const handleAddComment = async () => {
+  if (!newComment.trim() || !session?.user?.id) return;
+
+  setIsSubmitting(true);
+  try {
+    const res = await fetch(`/api/user/posts/${selectedPost._id}/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: session.user.id,
+        text: newComment.trim(),
+      }),
+    });
+
+    if (res.ok) {
+      // Optimistically update UI
+      const updatedPost = {
+        ...selectedPost,
+        comments: [
+          ...(selectedPost.comments || []),
+          {
+            _id: Date.now().toString(), // temporary ID
+            user: {
+              _id: session.user.id,
+              name: session.user.name,
+              username: session.user.username,
+              profileImage: session.user.image,
+            },
+            text: newComment.trim(),
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      };
+      setSelectedPost(updatedPost);
+
+      // Also update the posts list in the background if needed
+      setNewComment('');
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to post comment');
+    }
+  } catch (err) {
+    console.error('Comment error:', err);
+    alert('Network error');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -355,20 +469,36 @@ export default function ProfilePage() {
               <p className="text-slate-400 mb-3">@{user.username}</p>
               <p className="text-slate-300 mb-4 max-w-2xl">{user.bio || 'No bio yet.'}</p>
               
-              <div className="flex flex-wrap justify-center md:justify-start gap-6 mb-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{posts.length}</p>
-                  <p className="text-slate-400 text-sm">Posts</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{user.followers?.length || 0}</p>
-                  <p className="text-slate-400 text-sm">Followers</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{user.following?.length || 0}</p>
-                  <p className="text-slate-400 text-sm">Following</p>
-                </div>
-              </div>
+<div className="flex flex-wrap justify-center md:justify-start gap-6 mb-4">
+  <div className="text-center">
+    <p className="text-2xl font-bold text-white">{posts.length}</p>
+    <p className="text-slate-400 text-sm">Posts</p>
+  </div>
+  <button 
+    onClick={() => {
+      fetchFollowers();
+      setShowFollowersModal(true);
+    }}
+    className="text-center"
+  >
+    <p className="text-2xl font-bold text-white">{user.followers?.length || 0}</p>
+    <p className="text-slate-400 text-sm hover:text-indigo-400 cursor-pointer transition-colors">
+      Followers
+    </p>
+  </button>
+  <button 
+    onClick={() => {
+      fetchFollowing();
+      setShowFollowingModal(true);
+    }}
+    className="text-center"
+  >
+    <p className="text-2xl font-bold text-white">{user.following?.length || 0}</p>
+    <p className="text-slate-400 text-sm hover:text-indigo-400 cursor-pointer transition-colors">
+      Following
+    </p>
+  </button>
+</div>
 
               <button
                 onClick={openEditPostsModal}
@@ -454,10 +584,17 @@ export default function ProfilePage() {
                           <FiHeart className="w-4 h-4" />
                           {post.likes?.length || 0}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <FiMessageCircle className="w-4 h-4" />
-                          {post.comments?.length || 0}
-                        </span>
+<span
+  className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
+  onClick={(e) => {
+    e.stopPropagation();
+    setSelectedPost(post);
+    setCommentModalOpen(true);
+  }}
+>
+  <FiMessageCircle className="w-4 h-4" />
+  {post.comments?.length || 0}
+</span>
                       </div>
                       <span className="flex items-center gap-1 text-xs">
                         <FiCalendar className="w-3 h-3" />
@@ -778,6 +915,255 @@ export default function ProfilePage() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Followers Modal */}
+<AnimatePresence>
+  {showFollowersModal && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      onClick={() => setShowFollowersModal(false)}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-white">Followers</h2>
+          <button 
+            onClick={() => setShowFollowersModal(false)} 
+            className="text-slate-400 hover:text-white"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+        </div>
+
+        {loadingFollowers ? (
+          <div className="flex justify-center py-10">
+            <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+          </div>
+        ) : followersList.length === 0 ? (
+          <p className="text-slate-400 text-center py-6">No followers yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {followersList.map((follower) => (
+              <div key={follower._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                    {follower.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-slate-200">{follower.name}</p>
+                    <p className="text-slate-400 text-sm">@{follower.username}</p>
+                  </div>
+                </div>
+                {session?.user?.id !== follower._id && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFollowInModal(follower._id, follower.isFollowing, 'followers');
+                    }}
+                    className={`text-xs px-3 py-1.5 rounded-lg ${
+                      follower.isFollowing
+                        ? 'bg-gray-600 text-white'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                    }`}
+                  >
+                    {follower.isFollowing ? 'Following' : 'Follow'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+{/* Following Modal */}
+<AnimatePresence>
+  {showFollowingModal && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      onClick={() => setShowFollowingModal(false)}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-white">Following</h2>
+          <button 
+            onClick={() => setShowFollowingModal(false)} 
+            className="text-slate-400 hover:text-white"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+        </div>
+
+        {loadingFollowing ? (
+          <div className="flex justify-center py-10">
+            <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+          </div>
+        ) : followingList.length === 0 ? (
+          <p className="text-slate-400 text-center py-6">Not following anyone.</p>
+        ) : (
+          <div className="space-y-3">
+            {followingList.map((following) => (
+              <div key={following._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                    {following.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-slate-200">{following.name}</p>
+                    <p className="text-slate-400 text-sm">@{following.username}</p>
+                  </div>
+                </div>
+                {session?.user?.id !== following._id && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFollowInModal(following._id, following.isFollowing, 'following');
+                    }}
+                    className={`text-xs px-3 py-1.5 rounded-lg ${
+                      following.isFollowing
+                        ? 'bg-gray-600 text-white'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                    }`}
+                  >
+                    {following.isFollowing ? 'Following' : 'Follow'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+{/* Comment Modal */}
+<AnimatePresence>
+  {commentModalOpen && selectedPost && (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={() => setCommentModalOpen(false)}
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+      />
+
+      {/* Modal */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+        className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+            <FiMessageCircle className="w-5 h-5 text-indigo-400" />
+            Comments ({selectedPost.comments?.length || 0})
+          </h2>
+          <button
+            onClick={() => setCommentModalOpen(false)}
+            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-700/50 hover:text-slate-300"
+          >
+            <FiX className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Comments List */}
+        <div className="max-h-80 overflow-y-auto custom-scrollbar p-4">
+          {selectedPost.comments?.length === 0 ? (
+            <p className="text-slate-500 text-center py-4">No comments yet.</p>
+          ) : (
+            selectedPost.comments.map((comment, idx) => (
+              <motion.div
+                key={comment._id || idx}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.03 }}
+                className="flex gap-3 mb-4 last:mb-0"
+              >
+                {comment.user?.profileImage ? (
+                  <img
+                    src={comment.user.profileImage}
+                    alt={comment.user.name}
+                    className="w-9 h-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+                    {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <p className="text-sm">
+                    <span className="font-semibold text-slate-200">
+                      {comment.user?.name || 'Anonymous'}
+                    </span>{' '}
+                    <span className="text-slate-400">{comment.text}</span>
+                  </p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    {new Date(comment.createdAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+
+        {/* Add Comment Input */}
+        <div className="p-4 border-t border-slate-700/50">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Write a comment..."
+              className="flex-1 bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isSubmitting && newComment.trim()) {
+                  handleAddComment();
+                }
+              }}
+            />
+            <button
+              onClick={handleAddComment}
+              disabled={!newComment.trim() || isSubmitting}
+              className={`px-4 rounded-xl font-medium transition-colors ${
+                newComment.trim() && !isSubmitting
+                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              }`}
+            >
+              {isSubmitting ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : 'Post'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </>
+  )}
+</AnimatePresence>
     </div>
   );
 }

@@ -22,8 +22,16 @@ export async function GET(request, { params }) {
     }
 
     const posts = await Post.find({ user: userId })
+      .populate({
+        path: "user",
+        select: "name username profileImage",
+      })
+      .populate({
+        path: "comments.user", // ← THIS IS CRITICAL
+        select: "name username profileImage",
+      })
       .sort({ createdAt: -1 })
-      .lean(); // Sort by newest first, use lean()
+      .lean();
 
     return Response.json({ user: user.toObject(), posts });
   } catch (error) {

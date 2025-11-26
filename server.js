@@ -67,6 +67,31 @@ async function startServer() {
     });
 
     io.on("connection", (socket) => {
+      // Handle video call offer
+
+      socket.on("call-user", (data) => {
+        const { to, offer } = data;
+        console.log(`Call from ${socket.id} to user ${to}`);
+        io.to(to).emit("incoming-call", { from: socket.id, offer });
+      });
+
+      // Handle answer to call
+      socket.on("answer-call", (data) => {
+        const { to, answer } = data;
+        io.to(to).emit("call-accepted", { answer });
+      });
+
+      // Handle ICE candidates
+      socket.on("ice-candidate", (data) => {
+        const { to, candidate } = data;
+        io.to(to).emit("ice-candidate", { candidate });
+      });
+
+      // Handle call hangup
+      socket.on("hang-up", (data) => {
+        const { to } = data;
+        io.to(to).emit("call-ended");
+      });
       console.log("Socket.IO: New client connected with ID:", socket.id);
 
       socket.on("join-room", async (userId) => {

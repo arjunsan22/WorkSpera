@@ -7,6 +7,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSend, FiArrowLeft, FiMoreVertical, FiPaperclip, FiImage } from 'react-icons/fi';
 import { useSocket } from '@/hooks/useSocket';
+import VideoCallModal from '@/app/components/user/VideoCallModal';
+import IncomingCallModal from '@/app/components/user/IncomingCallModal';
+import { useWebRTC } from '@/hooks/useWebRTC';
 
 export default function ChatDetail() {
   const router = useRouter();
@@ -19,9 +22,42 @@ export default function ChatDetail() {
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-
+  const [localStream, setLocalStream] = useState(null);
+const [showVideoCall, setShowVideoCall] = useState(false);
   const userId = params.id;
   const { socket, isConnected } = useSocket(session?.user?.id);
+
+// Get WebRTC hook
+const {
+  remoteStream,
+  isCalling,
+  isReceivingCall,
+  isInCall, 
+  callUser,
+  hangUp,
+  acceptCall,
+} = useWebRTC(socket, localStream, userId);
+
+// Get user media on mount (only once)
+useEffect(() => {
+  const getMedia = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setLocalStream(stream);
+    } catch (err) {
+      console.error("Camera/mic access denied", err);
+      alert("Camera and microphone access required for video calls.");
+    }
+  };
+
+  getMedia();
+
+  return () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+  };
+}, []);
 
   useEffect(() => {
     if (!session || !userId) return;
@@ -179,9 +215,17 @@ export default function ChatDetail() {
             </div>
           </div>
           
-          <button className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
-            <FiMoreVertical className="w-5 h-5 text-gray-600" />
-          </button>
+
+          {/* In header, after FiMoreVertical button */}
+<button 
+  onClick={() => callUser(userId)}
+  className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+  disabled={isCalling || isInCall} // ✅ disable if already in call
+>
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+  </svg>
+</button>
         </div>
       </motion.div>
 
@@ -271,6 +315,27 @@ export default function ChatDetail() {
           </div>
         </div>
       </motion.div>
+      {/* At the very end, before closing </div> */}
+{isInCall && (
+  <VideoCallModal
+    localStream={localStream}
+    remoteStream={remoteStream}
+    onHangUp={() => {
+      hangUp();
+    }}
+  />
+)}
+
+{isReceivingCall && (
+  <IncomingCallModal
+onAccept={() => {
+  acceptCall();
+}}
+    onReject={() => {
+      hangUp();
+    }}
+  />
+)}
     </div>
   );
 }
