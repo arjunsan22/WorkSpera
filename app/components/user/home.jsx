@@ -411,7 +411,7 @@ const [showNotifications, setShowNotifications] = useState(false);
                       <div className="relative flex-shrink-0">
                        {/* Profile Image or Fallback Initials */}
     {chat.user.profileImage ? (
-      <div className="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
+      <div className="w-14 h-14 rounded-4xl bg-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
         <img
           src={chat.user.profileImage}
           alt={chat.user.name}
@@ -486,7 +486,7 @@ const [showNotifications, setShowNotifications] = useState(false);
                     <div className="flex items-center gap-3">
 <div className="relative flex-shrink-0">
   {user.profileImage ? (
-    <div className="w-14 h-14 rounded-2xl bg-slate-200 overflow-hidden shadow-lg">
+    <div className="w-14 h-14 rounded-4xl bg-slate-200 overflow-hidden shadow-lg">
       <img
         src={user.profileImage}
         alt={user.name}
@@ -680,8 +680,18 @@ const [showNotifications, setShowNotifications] = useState(false);
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-200">
                       <span className="font-semibold">{notif.sender?.name || 'Someone'}</span>{' '}
-                      {notif.type === 'follow' ? 'followed you' : 'sent you a message'}
+                      {notif.type === 'follow' ? 'followed you' : '(connects) he wants to help with your work'}
                     </p>
+          <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/chat/${notif.sender._id}`);
+                    setShowNotifications(false);
+                  }}
+                  className="mt-2 px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-all shadow shadow-indigo-500/20 cursor-pointer"
+                >
+                  Message
+                </button>
                     <p className="text-xs text-slate-500 mt-1 truncate">
                       {notif.message || ''}
                     </p>

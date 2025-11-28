@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { FaHeart, FaRegHeart, FaComment, FaShare, FaEllipsisH, FaTimes } from 'react-icons/fa';
 import Link from "next/link";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiUserPlus } from "react-icons/fi";
 // Toast Component
 const Toast = ({ message, type = 'success', onClose }) => {
   useEffect(() => {
@@ -379,9 +379,24 @@ export default function Feeds() {
                         <p className="text-sm text-gray-500">@{post.user.username}</p>
                       </div>
                     </div>
-                    <button className="text-gray-600 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full">
-                      <FaEllipsisH />
-                    </button>
+<button
+  onClick={async () => {
+    const res = await fetch(`/api/user/posts/${post._id}/connect`, {
+      method: "POST",
+    });
+    if (res.ok) {
+      showToast("Connection request sent!");
+    } else {
+      const data = await res.json();
+      showToast(data.error || "Failed to connect", "error");
+    }
+  }}
+  className="mt-3 px-4 py-2 bg-dark-600 hover:bg-purple-500 text-white rounded-full font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-2"
+>
+  <FiUserPlus className="text-lg" />
+  Connect for Work
+</button>
+
                   </div>
 
                   {/* Post Content */}

@@ -36,6 +36,10 @@ const PostSchema = new mongoose.Schema(
       type: [String], // e.g. "/uploads/post123.png"
       required: false,
     },
+    isServiceRequest: {
+      type: Boolean,
+      default: false,
+    },
 
     likes: [
       {

@@ -54,11 +54,9 @@ export async function POST(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Now parsing JSON since frontend sends JSON
     const body = await request.json();
-    const { caption, images, userId } = body;
+    const { caption, images, userId, isServiceRequest = true } = body; // ✅ extract isServiceRequest
 
-    // Validate user id matches session user
     if (session.user.id !== userId) {
       return NextResponse.json(
         { error: "Unauthorized to create post for this user" },
@@ -66,13 +64,11 @@ export async function POST(request) {
       );
     }
 
-    // Check user exists
     const userExists = await User.findById(userId);
     if (!userExists) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Validate images
     if (!images || images.length === 0) {
       return NextResponse.json(
         { error: "At least one image is required" },
@@ -80,13 +76,14 @@ export async function POST(request) {
       );
     }
 
+    // ✅ Pass isServiceRequest to Post.create()
     const newPost = await Post.create({
       user: userId,
       caption: caption || "",
-      image: images, // This should now be an array of URLs
+      image: images,
+      isServiceRequest: Boolean(isServiceRequest), // ✅ save it as boolean
     });
 
-    // Load final version with populated user
     const finalPost = await Post.findById(newPost._id).populate(
       "user",
       "name username profileImage"
