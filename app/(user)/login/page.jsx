@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
-
+import Link from "next/link";
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -8,16 +10,27 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const router = useRouter();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Handle your login logic here
-    }, 1500);
+    try {
+      const result = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        router.replace('/');
+      }
+    } catch (err) {
+      setError('Something went wrong');
+    }
   };
 
   const handleGoogleLogin = () => {
