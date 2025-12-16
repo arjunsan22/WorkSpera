@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-
+import { useRouter } from 'next/navigation';
+import Link from "next/link";
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -11,7 +12,7 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
-
+  const router = useRouter();
   // Validation rules
   const validateField = (fieldName, value) => {
     switch (fieldName) {
@@ -77,11 +78,30 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
+try {
+      const res = await fetch('/api/user/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, username, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+
+      if (res.ok) {
+        router.replace('/');
+      } else {
+        setError('Login failed after registration');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
       setIsSubmitting(false);
-      console.log('Registration submitted:', { name, email, username });
-    }, 2000);
+    }
   };
 
   const getInputClassName = (fieldName) => {
