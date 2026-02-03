@@ -4,9 +4,16 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit3,FiRefreshCw, FiImage,FiArrowLeft , FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid } from 'react-icons/fi';
+import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiFileText } from 'react-icons/fi';
 import Link from 'next/link';
+import StoryUploader from "@/app/components/stories/StoryUploader";
+import MyStoriesManager from "@/app/components/stories/MyStoriesManager";
+
 export default function ProfilePage() {
+  // Story States
+  const [showStoryUploader, setShowStoryUploader] = useState(false);
+  const [showStoryManager, setShowStoryManager] = useState(false);
+
   const { data: session } = useSession();
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -17,16 +24,17 @@ export default function ProfilePage() {
   const [tempPost, setTempPost] = useState({ caption: '', images: [] }); // Store temporary image URLs or file objects
   const [selectedPostForEdit, setSelectedPostForEdit] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-const [showFollowersModal, setShowFollowersModal] = useState(false);
-const [showFollowingModal, setShowFollowingModal] = useState(false);
-const [followersList, setFollowersList] = useState([]);
-const [followingList, setFollowingList] = useState([]);
-const [loadingFollowers, setLoadingFollowers] = useState(false);
-const [loadingFollowing, setLoadingFollowing] = useState(false);
-const [selectedPost, setSelectedPost] = useState(null);
-const [commentModalOpen, setCommentModalOpen] = useState(false);
-const [newComment, setNewComment] = useState('');
-const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState(false); // ✅ NEW
   useEffect(() => {
     if (session?.user?.id) {
       fetchProfileData();
@@ -51,40 +59,40 @@ const [isSubmitting, setIsSubmitting] = useState(false);
   };
 
   const fetchFollowers = async () => {
-  if (!user?._id) return;
-  setLoadingFollowers(true);
-  try {
-    const res = await fetch(`/api/user/${user._id}/followers`);
-    const data = await res.json();
-    if (res.ok) {
-      setFollowersList(data.followers || []);
+    if (!user?._id) return;
+    setLoadingFollowers(true);
+    try {
+      const res = await fetch(`/api/user/${user._id}/followers`);
+      const data = await res.json();
+      if (res.ok) {
+        setFollowersList(data.followers || []);
+      }
+    } catch (err) {
+      console.error('Error fetching followers:', err);
+    } finally {
+      setLoadingFollowers(false);
     }
-  } catch (err) {
-    console.error('Error fetching followers:', err);
-  } finally {
-    setLoadingFollowers(false);
-  }
-};
+  };
 
-const fetchFollowing = async () => {
-  if (!user?._id) return;
-  setLoadingFollowing(true);
-  try {
-    const res = await fetch(`/api/user/${user._id}/following`);
-    const data = await res.json();
-    if (res.ok) {
-      setFollowingList(data.following || []);
+  const fetchFollowing = async () => {
+    if (!user?._id) return;
+    setLoadingFollowing(true);
+    try {
+      const res = await fetch(`/api/user/${user._id}/following`);
+      const data = await res.json();
+      if (res.ok) {
+        setFollowingList(data.following || []);
+      }
+    } catch (err) {
+      console.error('Error fetching following:', err);
+    } finally {
+      setLoadingFollowing(false);
     }
-  } catch (err) {
-    console.error('Error fetching following:', err);
-  } finally {
-    setLoadingFollowing(false);
-  }
-};
+  };
 
   const openEditProfileModal = () => {
     if (user) {
-      setTempUser({ name: user.name, username: user.username, bio: user.bio, profileImage: user.profileImage });
+      setTempUser({ name: user.name, username: user.username, bio: user.bio, profileImage: user.profileImage, resume: user.resume, resumeName: user.resumeName });
       setIsEditProfileModalOpen(true);
     }
   };
@@ -103,29 +111,29 @@ const fetchFollowing = async () => {
     setTempPost({ caption: '', images: [] });
     setSelectedPostForEdit(null);
   };
-//handle follow modal
-const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType) => {
-  try {
-    const res = await fetch('/api/user/follow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetUserId }),
-    });
-    if (res.ok) {
-      // Refresh the list
-      if (listType === 'followers') {
-        fetchFollowers();
+  //handle follow modal
+  const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType) => {
+    try {
+      const res = await fetch('/api/user/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId }),
+      });
+      if (res.ok) {
+        // Refresh the list
+        if (listType === 'followers') {
+          fetchFollowers();
+        } else {
+          fetchFollowing();
+        }
       } else {
-        fetchFollowing();
+        const data = await res.json();
+        alert(data.message || 'Action failed');
       }
-    } else {
-      const data = await res.json();
-      alert(data.message || 'Action failed');
+    } catch (err) {
+      alert('Network error');
     }
-  } catch (err) {
-    alert('Network error');
-  }
-};
+  };
 
 
   const handleProfileUpdate = async () => {
@@ -138,8 +146,8 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
       if (!response.ok) {
         throw new Error('Failed to update profile');
       }
-      const updatedUser = await response.json();
-      setUser(updatedUser);
+      const data = await response.json();
+      setUser(data.user);
       closeEditProfileModal();
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -147,60 +155,60 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
   };
 
   const handleAddPost = async () => {
-  if (!tempPost.caption.trim() && tempPost.images.length === 0) {
-    alert('Please add a caption or at least one image.');
-    return;
-  }
+    if (!tempPost.caption.trim() && tempPost.images.length === 0) {
+      alert('Please add a caption or at least one image.');
+      return;
+    }
 
-  setIsUploading(true);
+    setIsUploading(true);
 
-  try {
-    // First, upload images to get URLs
-    const uploadedImageUrls = [];
-    
-    for (const img of tempPost.images) {
-      if (img instanceof File) {
-        const formData = new FormData();
-        formData.append('image', img);
-        
-        const uploadResponse = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (uploadResponse.ok) {
-          const result = await uploadResponse.json();
-          uploadedImageUrls.push(result.url);
-        } else {
-          throw new Error('Image upload failed');
+    try {
+      // First, upload images to get URLs
+      const uploadedImageUrls = [];
+
+      for (const img of tempPost.images) {
+        if (img instanceof File) {
+          const formData = new FormData();
+          formData.append('image', img);
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (uploadResponse.ok) {
+            const result = await uploadResponse.json();
+            uploadedImageUrls.push(result.url);
+          } else {
+            throw new Error('Image upload failed');
+          }
         }
       }
+
+      // Then create the post with the image URLs
+      const postResponse = await fetch('/api/user/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caption: tempPost.caption,
+          userId: session.user.id,
+          images: uploadedImageUrls,
+        }),
+      });
+
+      if (!postResponse.ok) {
+        throw new Error('Failed to create post');
+      }
+
+      const result = await postResponse.json();
+      setPosts(prev => [result.post, ...prev]);
+      closeEditPostsModal();
+    } catch (error) {
+      console.error('Error adding post:', error);
+    } finally {
+      setIsUploading(false);
     }
-
-    // Then create the post with the image URLs
-    const postResponse = await fetch('/api/user/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        caption: tempPost.caption,
-        userId: session.user.id,
-        images: uploadedImageUrls,
-      }),
-    });
-
-    if (!postResponse.ok) {
-      throw new Error('Failed to create post');
-    }
-
-    const result = await postResponse.json();
-    setPosts(prev => [result.post, ...prev]);
-    closeEditPostsModal();
-  } catch (error) {
-    console.error('Error adding post:', error);
-  } finally {
-    setIsUploading(false);
-  }
-};
+  };
 
   const handleUpdatePost = async (postId) => {
     if (!selectedPostForEdit.caption.trim() && selectedPostForEdit.images.length === 0) {
@@ -335,6 +343,41 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
     }
   };
 
+  // ✅ NEW: Handle Resume Upload
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/upload/resume", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Resume upload failed");
+
+      const data = await response.json();
+      setTempUser((prev) => ({
+        ...prev,
+        resume: data.url,
+        resumeName: data.originalFilename,
+      }));
+    } catch (error) {
+      console.error("Error uploading resume:", error);
+      alert("Failed to upload resume");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeResume = () => {
+    setTempUser((prev) => ({ ...prev, resume: "", resumeName: "" }));
+  };
+
   // ✅ NEW: Function to get image preview URL for File objects (for display in UI)
   const getPreviewUrl = (image) => {
     if (typeof image === 'string') {
@@ -348,53 +391,53 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
   };
 
   const handleAddComment = async () => {
-  if (!newComment.trim() || !session?.user?.id) return;
+    if (!newComment.trim() || !session?.user?.id) return;
 
-  setIsSubmitting(true);
-  try {
-    const res = await fetch(`/api/user/posts/${selectedPost._id}/comment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: session.user.id,
-        text: newComment.trim(),
-      }),
-    });
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/user/posts/${selectedPost._id}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: session.user.id,
+          text: newComment.trim(),
+        }),
+      });
 
-    if (res.ok) {
-      // Optimistically update UI
-      const updatedPost = {
-        ...selectedPost,
-        comments: [
-          ...(selectedPost.comments || []),
-          {
-            _id: Date.now().toString(), // temporary ID
-            user: {
-              _id: session.user.id,
-              name: session.user.name,
-              username: session.user.username,
-              profileImage: session.user.image,
+      if (res.ok) {
+        // Optimistically update UI
+        const updatedPost = {
+          ...selectedPost,
+          comments: [
+            ...(selectedPost.comments || []),
+            {
+              _id: Date.now().toString(), // temporary ID
+              user: {
+                _id: session.user.id,
+                name: session.user.name,
+                username: session.user.username,
+                profileImage: session.user.image,
+              },
+              text: newComment.trim(),
+              createdAt: new Date().toISOString(),
             },
-            text: newComment.trim(),
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      };
-      setSelectedPost(updatedPost);
+          ],
+        };
+        setSelectedPost(updatedPost);
 
-      // Also update the posts list in the background if needed
-      setNewComment('');
-    } else {
-      const data = await res.json();
-      alert(data.error || 'Failed to post comment');
+        // Also update the posts list in the background if needed
+        setNewComment('');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to post comment');
+      }
+    } catch (err) {
+      console.error('Comment error:', err);
+      alert('Network error');
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (err) {
-    console.error('Comment error:', err);
-    alert('Network error');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   if (isLoading) {
     return (
@@ -423,15 +466,15 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
-              {/* 🔹 Back Navigation */}
-      <Link 
-        href="/" 
-        className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 
+        {/* 🔹 Back Navigation */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 
                    transition-colors font-medium mb-4"
-      >
-        <FiArrowLeft className="w-5 h-5" />
-        Back to Home
-      </Link>
+        >
+          <FiArrowLeft className="w-5 h-5" />
+          Back to Home
+        </Link>
         {/* Profile Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -454,7 +497,7 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                 <FiCamera className="w-4 h-4" />
               </button>
             </div>
-            
+
             <div className="flex-1 text-center md:text-left">
               <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
                 <h1 className="text-3xl font-bold text-white">{user.name}</h1>
@@ -465,40 +508,50 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                   <FiEdit3 className="w-4 h-4" />
                   Edit Profile
                 </button>
+                {/* ✅ NEW: View Resume Button */}
+                {user.resume && (
+                  <button
+                    onClick={() => setIsResumeModalOpen(true)}
+                    className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-600/30 rounded-xl transition-colors inline-flex items-center justify-center gap-2"
+                  >
+                    <FiFileText className="w-4 h-4" />
+                    Resume
+                  </button>
+                )}
               </div>
               <p className="text-slate-400 mb-3">@{user.username}</p>
               <p className="text-slate-300 mb-4 max-w-2xl">{user.bio || 'No bio yet.'}</p>
-              
-<div className="flex flex-wrap justify-center md:justify-start gap-6 mb-4">
-  <div className="text-center">
-    <p className="text-2xl font-bold text-white">{posts.length}</p>
-    <p className="text-slate-400 text-sm">Posts</p>
-  </div>
-  <button 
-    onClick={() => {
-      fetchFollowers();
-      setShowFollowersModal(true);
-    }}
-    className="text-center"
-  >
-    <p className="text-2xl font-bold text-white">{user.followers?.length || 0}</p>
-    <p className="text-slate-400 text-sm hover:text-indigo-400 cursor-pointer transition-colors">
-      Followers
-    </p>
-  </button>
-  <button 
-    onClick={() => {
-      fetchFollowing();
-      setShowFollowingModal(true);
-    }}
-    className="text-center"
-  >
-    <p className="text-2xl font-bold text-white">{user.following?.length || 0}</p>
-    <p className="text-slate-400 text-sm hover:text-indigo-400 cursor-pointer transition-colors">
-      Following
-    </p>
-  </button>
-</div>
+
+              <div className="flex flex-wrap justify-center md:justify-start gap-6 mb-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">{posts.length}</p>
+                  <p className="text-slate-400 text-sm">Posts</p>
+                </div>
+                <button
+                  onClick={() => {
+                    fetchFollowers();
+                    setShowFollowersModal(true);
+                  }}
+                  className="text-center"
+                >
+                  <p className="text-2xl font-bold text-white">{user.followers?.length || 0}</p>
+                  <p className="text-slate-400 text-sm hover:text-indigo-400 cursor-pointer transition-colors">
+                    Followers
+                  </p>
+                </button>
+                <button
+                  onClick={() => {
+                    fetchFollowing();
+                    setShowFollowingModal(true);
+                  }}
+                  className="text-center"
+                >
+                  <p className="text-2xl font-bold text-white">{user.following?.length || 0}</p>
+                  <p className="text-slate-400 text-sm hover:text-indigo-400 cursor-pointer transition-colors">
+                    Following
+                  </p>
+                </button>
+              </div>
 
               <button
                 onClick={openEditPostsModal}
@@ -507,6 +560,21 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                 <FiPlus className="w-5 h-5" />
                 Manage Posts
               </button>
+
+              <div className="flex gap-3 mt-4 md:mt-0 md:ml-4">
+                <button
+                  onClick={() => setShowStoryUploader(true)}
+                  className="px-4 py-3 bg-gradient-to-r from-pink-600 to-orange-500 text-white rounded-xl hover:from-pink-500 hover:to-orange-400 transition-all font-medium inline-flex items-center gap-2 shadow-lg"
+                >
+                  <FiPlus className="w-5 h-5" /> Add Story
+                </button>
+                <button
+                  onClick={() => setShowStoryManager(true)}
+                  className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all font-medium inline-flex items-center gap-2 border border-slate-600 shadow-lg"
+                >
+                  Stories
+                </button>
+              </div>
 
             </div>
           </div>
@@ -574,27 +642,27 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                       )}
                     </div>
                   )}
-                  
+
                   <div className="p-4">
                     <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption}</p>
-                    
+
                     <div className="flex items-center justify-between text-slate-400 text-sm">
                       <div className="flex items-center gap-4">
                         <span className="flex items-center gap-1">
                           <FiHeart className="w-4 h-4" />
                           {post.likes?.length || 0}
                         </span>
-<span
-  className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
-  onClick={(e) => {
-    e.stopPropagation();
-    setSelectedPost(post);
-    setCommentModalOpen(true);
-  }}
->
-  <FiMessageCircle className="w-4 h-4" />
-  {post.comments?.length || 0}
-</span>
+                        <span
+                          className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPost(post);
+                            setCommentModalOpen(true);
+                          }}
+                        >
+                          <FiMessageCircle className="w-4 h-4" />
+                          {post.comments?.length || 0}
+                        </span>
                       </div>
                       <span className="flex items-center gap-1 text-xs">
                         <FiCalendar className="w-3 h-3" />
@@ -610,6 +678,19 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
       </div>
 
       {/* Edit Profile Modal */}
+      {showStoryUploader && (
+        <StoryUploader
+          onClose={() => setShowStoryUploader(false)}
+          onUploadSuccess={() => {
+            // Optional: maybe refresh something
+          }}
+        />
+      )}
+
+      {showStoryManager && (
+        <MyStoriesManager onClose={() => setShowStoryManager(false)} />
+      )}
+
       <AnimatePresence>
         {isEditProfileModalOpen && (
           <motion.div
@@ -632,7 +713,7 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                   <FiX className="w-6 h-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Profile Picture</label>
@@ -670,7 +751,7 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                     </button>
                   )}
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Name</label>
                   <input
@@ -680,7 +761,7 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Username</label>
                   <input
@@ -690,7 +771,7 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Bio</label>
                   <textarea
@@ -700,8 +781,42 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all resize-none"
                   />
                 </div>
+
+                {/* Resume Upload Section */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Resume (PDF/DOC)</label>
+                  <div className="flex items-center gap-4">
+                    {tempUser.resume ? (
+                      <div className="flex items-center gap-3 bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-600/50">
+                        <FiFileText className="w-5 h-5 text-indigo-400" />
+                        <a href={tempUser.resume} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline max-w-[150px] truncate block">
+                          {tempUser.resumeName || "View Resume"}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={removeResume}
+                          className="text-red-400 hover:text-red-300 ml-2"
+                        >
+                          <FiX className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2 border border-slate-600 border-dashed w-full justify-center">
+                        {isUploading ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiPlus className="w-4 h-4" />}
+                        Upload Resume
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          onChange={handleResumeUpload}
+                          className="hidden"
+                          disabled={isUploading}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
               </div>
-              
+
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={closeEditProfileModal}
@@ -853,7 +968,7 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                     </button>
                   </div>
                 </motion.div>
-              )} 
+              )}
 
               {/* Existing Posts List */}
               <div>
@@ -879,10 +994,10 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {post.image && post.image.length > 0 && (
-                            <img 
-                              src={post.image[0]} 
-                              alt="Post thumbnail" 
-                              className="w-12 h-12 object-cover rounded-lg flex-shrink-0" 
+                            <img
+                              src={post.image[0]}
+                              alt="Post thumbnail"
+                              className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                             />
                           )}
                           <div className="flex-1 min-w-0">
@@ -916,254 +1031,304 @@ const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType)
         )}
       </AnimatePresence>
       {/* Followers Modal */}
-<AnimatePresence>
-  {showFollowersModal && (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-      onClick={() => setShowFollowersModal(false)}
-    >
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Followers</h2>
-          <button 
-            onClick={() => setShowFollowersModal(false)} 
-            className="text-slate-400 hover:text-white"
+      <AnimatePresence>
+        {showFollowersModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowFollowersModal(false)}
           >
-            <FiX className="w-6 h-6" />
-          </button>
-        </div>
-
-        {loadingFollowers ? (
-          <div className="flex justify-center py-10">
-            <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          </div>
-        ) : followersList.length === 0 ? (
-          <p className="text-slate-400 text-center py-6">No followers yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {followersList.map((follower) => (
-              <div key={follower._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                    {follower.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-slate-200">{follower.name}</p>
-                    <p className="text-slate-400 text-sm">@{follower.username}</p>
-                  </div>
-                </div>
-                {session?.user?.id !== follower._id && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFollowInModal(follower._id, follower.isFollowing, 'followers');
-                    }}
-                    className={`text-xs px-3 py-1.5 rounded-lg ${
-                      follower.isFollowing
-                        ? 'bg-gray-600 text-white'
-                        : 'bg-emerald-600 text-white hover:bg-emerald-500'
-                    }`}
-                  >
-                    {follower.isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
-  )}
-</AnimatePresence>
-{/* Following Modal */}
-<AnimatePresence>
-  {showFollowingModal && (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-      onClick={() => setShowFollowingModal(false)}
-    >
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Following</h2>
-          <button 
-            onClick={() => setShowFollowingModal(false)} 
-            className="text-slate-400 hover:text-white"
-          >
-            <FiX className="w-6 h-6" />
-          </button>
-        </div>
-
-        {loadingFollowing ? (
-          <div className="flex justify-center py-10">
-            <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          </div>
-        ) : followingList.length === 0 ? (
-          <p className="text-slate-400 text-center py-6">Not following anyone.</p>
-        ) : (
-          <div className="space-y-3">
-            {followingList.map((following) => (
-              <div key={following._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                    {following.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-slate-200">{following.name}</p>
-                    <p className="text-slate-400 text-sm">@{following.username}</p>
-                  </div>
-                </div>
-                {session?.user?.id !== following._id && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFollowInModal(following._id, following.isFollowing, 'following');
-                    }}
-                    className={`text-xs px-3 py-1.5 rounded-lg ${
-                      following.isFollowing
-                        ? 'bg-gray-600 text-white'
-                        : 'bg-emerald-600 text-white hover:bg-emerald-500'
-                    }`}
-                  >
-                    {following.isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
-  )}
-</AnimatePresence>
-{/* Comment Modal */}
-<AnimatePresence>
-  {commentModalOpen && selectedPost && (
-    <>
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={() => setCommentModalOpen(false)}
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-      />
-
-      {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-        className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl overflow-hidden"
-      >
-        {/* Header */}
-        <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2">
-            <FiMessageCircle className="w-5 h-5 text-indigo-400" />
-            Comments ({selectedPost.comments?.length || 0})
-          </h2>
-          <button
-            onClick={() => setCommentModalOpen(false)}
-            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-700/50 hover:text-slate-300"
-          >
-            <FiX className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Comments List */}
-        <div className="max-h-80 overflow-y-auto custom-scrollbar p-4">
-          {selectedPost.comments?.length === 0 ? (
-            <p className="text-slate-500 text-center py-4">No comments yet.</p>
-          ) : (
-            selectedPost.comments.map((comment, idx) => (
-              <motion.div
-                key={comment._id || idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.03 }}
-                className="flex gap-3 mb-4 last:mb-0"
-              >
-                {comment.user?.profileImage ? (
-                  <img
-                    src={comment.user.profileImage}
-                    alt={comment.user.name}
-                    className="w-9 h-9 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
-                    {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                )}
-                <div className="flex-1">
-                  <p className="text-sm">
-                    <span className="font-semibold text-slate-200">
-                      {comment.user?.name || 'Anonymous'}
-                    </span>{' '}
-                    <span className="text-slate-400">{comment.text}</span>
-                  </p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    {new Date(comment.createdAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-              </motion.div>
-            ))
-          )}
-        </div>
-
-        {/* Add Comment Input */}
-        <div className="p-4 border-t border-slate-700/50">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="flex-1 bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !isSubmitting && newComment.trim()) {
-                  handleAddComment();
-                }
-              }}
-            />
-            <button
-              onClick={handleAddComment}
-              disabled={!newComment.trim() || isSubmitting}
-              className={`px-4 rounded-xl font-medium transition-colors ${
-                newComment.trim() && !isSubmitting
-                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                  : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-              }`}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
             >
-              {isSubmitting ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : 'Post'}
-            </button>
-          </div>
-        </div>
-      </motion.div>
-    </>
-  )}
-</AnimatePresence>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white">Followers</h2>
+                <button
+                  onClick={() => setShowFollowersModal(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <FiX className="w-6 h-6" />
+                </button>
+              </div>
+
+              {loadingFollowers ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                </div>
+              ) : followersList.length === 0 ? (
+                <p className="text-slate-400 text-center py-6">No followers yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {followersList.map((follower) => (
+                    <div key={follower._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                          {follower.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-slate-200">{follower.name}</p>
+                          <p className="text-slate-400 text-sm">@{follower.username}</p>
+                        </div>
+                      </div>
+                      {session?.user?.id !== follower._id && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFollowInModal(follower._id, follower.isFollowing, 'followers');
+                          }}
+                          className={`text-xs px-3 py-1.5 rounded-lg ${follower.isFollowing
+                            ? 'bg-gray-600 text-white'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                            }`}
+                        >
+                          {follower.isFollowing ? 'Following' : 'Follow'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Following Modal */}
+      <AnimatePresence>
+        {showFollowingModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowFollowingModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white">Following</h2>
+                <button
+                  onClick={() => setShowFollowingModal(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <FiX className="w-6 h-6" />
+                </button>
+              </div>
+
+              {loadingFollowing ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                </div>
+              ) : followingList.length === 0 ? (
+                <p className="text-slate-400 text-center py-6">Not following anyone.</p>
+              ) : (
+                <div className="space-y-3">
+                  {followingList.map((following) => (
+                    <div key={following._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                          {following.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-slate-200">{following.name}</p>
+                          <p className="text-slate-400 text-sm">@{following.username}</p>
+                        </div>
+                      </div>
+                      {session?.user?.id !== following._id && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFollowInModal(following._id, following.isFollowing, 'following');
+                          }}
+                          className={`text-xs px-3 py-1.5 rounded-lg ${following.isFollowing
+                            ? 'bg-gray-600 text-white'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                            }`}
+                        >
+                          {following.isFollowing ? 'Following' : 'Follow'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Comment Modal */}
+      <AnimatePresence>
+        {commentModalOpen && selectedPost && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCommentModalOpen(false)}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+                  <FiMessageCircle className="w-5 h-5 text-indigo-400" />
+                  Comments ({selectedPost.comments?.length || 0})
+                </h2>
+                <button
+                  onClick={() => setCommentModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-700/50 hover:text-slate-300"
+                >
+                  <FiX className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Comments List */}
+              <div className="max-h-80 overflow-y-auto custom-scrollbar p-4">
+                {selectedPost.comments?.length === 0 ? (
+                  <p className="text-slate-500 text-center py-4">No comments yet.</p>
+                ) : (
+                  selectedPost.comments.map((comment, idx) => (
+                    <motion.div
+                      key={comment._id || idx}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className="flex gap-3 mb-4 last:mb-0"
+                    >
+                      {comment.user?.profileImage ? (
+                        <img
+                          src={comment.user.profileImage}
+                          alt={comment.user.name}
+                          className="w-9 h-9 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+                          {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm">
+                          <span className="font-semibold text-slate-200">
+                            {comment.user?.name || 'Anonymous'}
+                          </span>{' '}
+                          <span className="text-slate-400">{comment.text}</span>
+                        </p>
+                        <p className="text-xs text-slate-600 mt-1">
+                          {new Date(comment.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+
+              {/* Add Comment Input */}
+              <div className="p-4 border-t border-slate-700/50">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="flex-1 bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isSubmitting && newComment.trim()) {
+                        handleAddComment();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim() || isSubmitting}
+                    className={`px-4 rounded-xl font-medium transition-colors ${newComment.trim() && !isSubmitting
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                      }`}
+                  >
+                    {isSubmitting ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : 'Post'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ✅ NEW: Resume Preview Modal */}
+      <AnimatePresence>
+        {isResumeModalOpen && user?.resume && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+            onClick={() => setIsResumeModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col"
+            >
+              <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/50 rounded-t-2xl">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <FiFileText className="w-5 h-5 text-indigo-400" />
+                  {user.resumeName || "Resume"}
+                </h2>
+                <button
+                  onClick={() => setIsResumeModalOpen(false)}
+                  className="p-2 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-colors"
+                >
+                  <FiX className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="bg-slate-800 px-4 py-2 flex justify-end">
+                <a
+                  href={user.resume}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 hover:underline"
+                >
+                  <FiFileText className="w-4 h-4" /> Open Original File
+                </a>
+              </div>
+              <div className="flex-1 bg-slate-800 p-1 relative overflow-hidden">
+                <iframe
+                  src={`https://docs.google.com/gview?url=${encodeURIComponent(user.resume)}&embedded=true`}
+                  className="w-full h-full rounded-b-xl bg-white"
+                  title="Resume Preview"
+                  style={{ minHeight: '500px' }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

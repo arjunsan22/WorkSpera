@@ -54,6 +54,28 @@ const UserSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    // Resume fields
+    resume: {
+      type: String, // Cloudinary URL
+      default: "",
+    },
+    resumeName: {
+      type: String, // Original filename
+      default: "",
+    },
+    // OTP verification fields
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   {

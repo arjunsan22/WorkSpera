@@ -51,7 +51,8 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
-    const { name, username, bio, profileImage } = body;
+    console.log("PUT /api/user/profile - Body:", body); // 🔍 Debug Log
+    const { name, username, bio, profileImage, resume, resumeName } = body;
 
     // Basic validation
     if (username && !/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
@@ -63,7 +64,7 @@ export async function PUT(request, { params }) {
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { name, username, bio, profileImage },
+      { name, username, bio, profileImage, resume, resumeName },
       { new: true, runValidators: true } // Return updated doc and run schema validators
     ).select("-password"); // Exclude password from response
 

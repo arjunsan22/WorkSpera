@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { FaHeart, FaRegHeart, FaComment, FaShare, FaEllipsisH, FaTimes } from 'react-icons/fa';
 import Link from "next/link";
 import { FiArrowLeft, FiUserPlus } from "react-icons/fi";
+import StoryFeed from "@/app/components/stories/StoryFeed";
 // Toast Component
 const Toast = ({ message, type = 'success', onClose }) => {
   useEffect(() => {
@@ -13,11 +14,10 @@ const Toast = ({ message, type = 'success', onClose }) => {
 
   return (
     <div className="fixed top-4 right-4 z-50 animate-slide-in">
-      <div className={`px-6 py-4 rounded-lg shadow-2xl backdrop-blur-lg border ${
-        type === 'success' 
-          ? 'bg-green-500/90 border-green-400/50' 
-          : 'bg-red-500/90 border-red-400/50'
-      }`}>
+      <div className={`px-6 py-4 rounded-lg shadow-2xl backdrop-blur-lg border ${type === 'success'
+        ? 'bg-green-500/90 border-green-400/50'
+        : 'bg-red-500/90 border-red-400/50'
+        }`}>
         <div className="flex items-center space-x-3">
           <span className="text-white font-medium">{message}</span>
           <button onClick={onClose} className="text-white/80 hover:text-white">
@@ -165,7 +165,7 @@ export default function Feeds() {
             const isLiked = post.likes.includes(session.user.id);
             return {
               ...post,
-              likes: isLiked 
+              likes: isLiked
                 ? post.likes.filter(id => id.toString() !== session.user.id)
                 : [...post.likes, session.user.id],
               isLiked: !isLiked,
@@ -223,7 +223,7 @@ export default function Feeds() {
         setPosts(updatedPosts);
         setNewComments(prev => ({ ...prev, [postId]: '' }));
         showToast('Comment added successfully!');
-        
+
         // Update selected post if modal is open
         if (selectedPost?._id === postId) {
           const updatedPost = updatedPosts.find(p => p._id === postId);
@@ -332,8 +332,8 @@ export default function Feeds() {
         />
       )}
       {/* 🔹 Back Navigation */}
-      <Link 
-        href="/" 
+      <Link
+        href="/"
         className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 
                    transition-colors font-medium mb-4"
       >
@@ -347,7 +347,10 @@ export default function Feeds() {
           </h1>
           <div className="h-1 w-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
         </div>
-        
+
+        {/* Stories Feed */}
+        <StoryFeed />
+
         {posts.length === 0 ? (
           <div className="text-center py-20 animate-fade-in">
             <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl p-12 border border-gray-800">
@@ -379,23 +382,23 @@ export default function Feeds() {
                         <p className="text-sm text-gray-500">@{post.user.username}</p>
                       </div>
                     </div>
-<button
-  onClick={async () => {
-    const res = await fetch(`/api/user/posts/${post._id}/connect`, {
-      method: "POST",
-    });
-    if (res.ok) {
-      showToast("Connection request sent!");
-    } else {
-      const data = await res.json();
-      showToast(data.error || "Failed to connect", "error");
-    }
-  }}
-  className="mt-3 px-4 py-2 bg-dark-600 hover:bg-purple-500 text-white rounded-full font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-2"
->
-  <FiUserPlus className="text-lg" />
-  Connect for Work
-</button>
+                    <button
+                      onClick={async () => {
+                        const res = await fetch(`/api/user/posts/${post._id}/connect`, {
+                          method: "POST",
+                        });
+                        if (res.ok) {
+                          showToast("Connection request sent!");
+                        } else {
+                          const data = await res.json();
+                          showToast(data.error || "Failed to connect", "error");
+                        }
+                      }}
+                      className="mt-3 px-4 py-2 bg-dark-600 hover:bg-purple-500 text-white rounded-full font-medium transition-all hover:scale-105 cursor-pointer flex items-center gap-2"
+                    >
+                      <FiUserPlus className="text-lg" />
+                      Connect for Work
+                    </button>
 
                   </div>
 
@@ -426,16 +429,15 @@ export default function Feeds() {
                   <div className="flex items-center justify-around">
                     <button
                       onClick={() => handleLike(post._id)}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all hover:scale-110 transform ${
-                        post.isLiked 
-                          ? 'text-red-500 bg-red-500/10' 
-                          : 'text-gray-400 hover:text-red-500 hover:bg-red-500/10'
-                      }`}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all hover:scale-110 transform ${post.isLiked
+                        ? 'text-red-500 bg-red-500/10'
+                        : 'text-gray-400 hover:text-red-500 hover:bg-red-500/10'
+                        }`}
                     >
                       {post.isLiked ? <FaHeart className="text-xl" /> : <FaRegHeart className="text-xl" />}
                       <span className="font-semibold">{post.likeCount}</span>
                     </button>
-                    
+
                     <button
                       onClick={() => setSelectedPost(post)}
                       className="flex items-center space-x-2 px-4 py-2 rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 transition-all hover:scale-110 transform"
@@ -443,7 +445,7 @@ export default function Feeds() {
                       <FaComment className="text-xl" />
                       <span className="font-semibold">{post.commentCount}</span>
                     </button>
-                    
+
                     <button
                       onClick={() => handleShare(post._id)}
                       className="flex items-center space-x-2 px-4 py-2 rounded-full text-gray-400 hover:text-green-500 hover:bg-green-500/10 transition-all hover:scale-110 transform"

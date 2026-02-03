@@ -78,7 +78,7 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
 
-try {
+    try {
       const res = await fetch('/api/user/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,11 +91,11 @@ try {
         throw new Error(data.message || 'Registration failed');
       }
 
-
-      if (res.ok) {
-        router.replace('/');
+      // Redirect to OTP verification page
+      if (data.requiresVerification) {
+        router.replace(`/verify-otp?email=${encodeURIComponent(email)}`);
       } else {
-        setError('Login failed after registration');
+        router.replace('/');
       }
     } catch (err) {
       setError(err.message);
@@ -117,7 +117,7 @@ try {
 
   const getValidationIcon = (fieldName, value) => {
     if (!touched[fieldName]) return null;
-    
+
     if (errors[fieldName]) {
       return (
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 animate-shake">
@@ -127,7 +127,7 @@ try {
         </span>
       );
     }
-    
+
     if (value) {
       return (
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 animate-checkmark">
@@ -137,13 +137,13 @@ try {
         </span>
       );
     }
-    
+
     return null;
   };
 
   const getPasswordStrength = () => {
     if (!password) return { strength: 0, text: '', color: '' };
-    
+
     let strength = 0;
     if (password.length >= 8) strength++;
     if (/[a-z]/.test(password)) strength++;
@@ -179,7 +179,7 @@ try {
       {/* Register Card */}
       <div className="relative w-full max-w-md z-10">
         <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-3xl blur-2xl opacity-50 animate-pulse"></div>
-        
+
         <div className="relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-10 transform transition-all duration-300 hover:scale-[1.02]">
           {/* Header */}
           <div className="text-center mb-8">
@@ -327,28 +327,27 @@ try {
                 </button>
                 {getValidationIcon('password', password)}
               </div>
-              
+
               {/* Password Strength Indicator */}
               {password && (
                 <div className="mt-2 animate-slideIn">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-gray-600 font-medium">Password Strength</span>
-                    <span className={`text-xs font-semibold ${
-                      passwordStrength.text === 'Weak' ? 'text-red-500' :
-                      passwordStrength.text === 'Fair' ? 'text-yellow-500' :
-                      passwordStrength.text === 'Good' ? 'text-blue-500' :
-                      'text-green-500'
-                    }`}>{passwordStrength.text}</span>
+                    <span className={`text-xs font-semibold ${passwordStrength.text === 'Weak' ? 'text-red-500' :
+                        passwordStrength.text === 'Fair' ? 'text-yellow-500' :
+                          passwordStrength.text === 'Good' ? 'text-blue-500' :
+                            'text-green-500'
+                      }`}>{passwordStrength.text}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className={`h-full ${passwordStrength.color} transition-all duration-500 ease-out`}
                       style={{ width: `${passwordStrength.strength}%` }}
                     ></div>
                   </div>
                 </div>
               )}
-              
+
               {touched.password && errors.password && (
                 <p className="mt-1.5 text-xs text-red-500 ml-1 animate-slideIn">{errors.password}</p>
               )}

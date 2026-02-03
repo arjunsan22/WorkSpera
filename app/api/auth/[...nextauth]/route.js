@@ -2,8 +2,8 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import User from "../../../../models/User";
-import connectDB from "../../../../lib/connectDB";
+import User from "@/models/User";
+import connectDB from "@/lib/connectDB";
 import bcrypt from "bcryptjs";
 
 export const authOptions = {
@@ -20,13 +20,18 @@ export const authOptions = {
         const user = await User.findOne({ email: credentials.email });
         if (!user) throw new Error("No user found");
 
+        // Check if user is verified
+        if (!user.isVerified) {
+          throw new Error("Invalid credentials");
+        }
+
         if (!user.password) throw new Error("Use Google to login");
 
         const isValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
-        if (!isValid) throw new Error("Invalid password");
+        if (!isValid) throw new Error("Invalid credentials");
 
         return {
           id: user._id.toString(),

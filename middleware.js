@@ -7,8 +7,12 @@ export async function middleware(req) {
 
   const { pathname } = req.nextUrl;
 
-  // Allow access to login, register, and public pages
-  if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
+  // Allow access to login, register, verify-otp, and public pages
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/verify-otp")
+  ) {
     if (token) {
       return NextResponse.redirect(new URL("/", req.url));
     }
