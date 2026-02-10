@@ -13,9 +13,9 @@ export async function PUT(request) {
     // }
 
     const body = await request.json();
-    console.log(body,'body..................');
+    console.log(body, 'body..................');
     const { userId, isOnline } = body;
-console.log(userId,isOnline,'userId,isOnline..................');
+    console.log(userId, isOnline, 'userId,isOnline..................');
     if (!userId || typeof isOnline !== "boolean") {
       return Response.json(
         { error: "Invalid request body: userId and isOnline required." },

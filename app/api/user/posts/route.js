@@ -8,42 +8,67 @@ import { NextResponse } from "next/server";
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
+    const userId = session?.user?.id || null;
 
-    // Optional: Check if user is authenticated for additional user-specific data
-    let userId = null;
-    if (session) {
-      userId = session.user.id;
+    // Fetch posts with top-level user and comment users populated
+    let posts = await Post.find({ visibility: "public" })
+      .populate("user", "name username profileImage")
+      .populate("comments.user", "name username profileImage")
+      .sort({ createdAt: -1 })
+      .lean({ defaults: true }); // ensures consistent object shape
+
+    // Collect reply user IDs (as strings)
+    const replyUserIds = new Set();
+    posts.forEach(post => {
+      post.comments?.forEach(comment => {
+        comment.replies?.forEach(reply => {
+          if (reply.user) {
+            replyUserIds.add(String(reply.user)); // ✅ Safe conversion
+          }
+        });
+      });
+    });
+
+    // Fetch reply users
+    const replyUserMap = {};
+    if (replyUserIds.size > 0) {
+      const users = await User.find(
+        { _id: { $in: Array.from(replyUserIds) } },
+        "name username profileImage"
+      ).lean();
+      users.forEach(user => {
+        replyUserMap[String(user._id)] = user; // ✅ key as string
+      });
     }
 
-    // Fetch posts with populated user data, sorted by creation date (newest first)
-    const posts = await Post.find({ visibility: "public" })
-      .populate({
-        path: "user",
-        select: "name username profileImage",
-      })
-      .populate({
-        path: "comments.user",
-        select: "name username profileImage",
-      })
-      .sort({ createdAt: -1 })
-      .lean(); // Use lean() for better performance
+    // Inject populated reply users
+    const processedPosts = posts.map(post => {
+      const updatedComments = post.comments?.map(comment => {
+        const updatedReplies = comment.replies?.map(reply => ({
+          ...reply,
+          user: replyUserMap[String(reply.user)] || null,
+        })) || [];
+        return { ...comment, replies: updatedReplies };
+      }) || [];
 
-    // Add like and comment counts for easier frontend access
-    const postsWithCounts = posts.map((post) => ({
-      ...post,
-      likeCount: post.likes.length,
-      commentCount: post.comments.length,
-      isLiked: userId ? post.likes.includes(userId) : false, // Check if current user liked the post
-    }));
+      // Normalize likes for comparison
+      const likeIds = (post.likes || []).map(id => String(id));
 
-    return NextResponse.json({ posts: postsWithCounts }, { status: 200 });
+      return {
+        ...post,
+        comments: updatedComments,
+        likeCount: likeIds.length,
+        commentCount: updatedComments.length,
+        isLiked: userId ? likeIds.includes(String(userId)) : false,
+      };
+    });
+
+    return NextResponse.json({ posts: processedPosts }, { status: 200 });
   } catch (error) {
     console.error("Error fetching posts:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
+
 }
 
 export async function POST(request) {
@@ -55,7 +80,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { caption, images, userId, isServiceRequest = true } = body; // ✅ extract isServiceRequest
+    const { caption, images, userId, type } = body;
 
     if (session.user.id !== userId) {
       return NextResponse.json(
@@ -76,12 +101,12 @@ export async function POST(request) {
       );
     }
 
-    // ✅ Pass isServiceRequest to Post.create()
     const newPost = await Post.create({
       user: userId,
       caption: caption || "",
       image: images,
-      isServiceRequest: Boolean(isServiceRequest), // ✅ save it as boolean
+      type: type || 'feed',
+      isServiceRequest: type === 'job', // Set based on type
     });
 
     const finalPost = await Post.findById(newPost._id).populate(

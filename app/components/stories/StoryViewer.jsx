@@ -1,31 +1,59 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { FiX, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { useSession } from "next-auth/react";
+import { FiX, FiMoreHorizontal } from "react-icons/fi";
+import { FaHeart, FaRegHeart, FaPaperPlane } from "react-icons/fa";
 
-const STORY_DURATION = 5000; // 5 seconds per story
+const STORY_DURATION = 5000;
 
 export default function StoryViewer({ feed, startIndex = 0, onClose }) {
+    const { data: session } = useSession();
     const [currentUserIndex, setCurrentUserIndex] = useState(startIndex);
     const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
+    const [likesState, setLikesState] = useState({});
 
-    // Safety check
+    // Extra safety checks for dynamic feed changes
     if (!feed || feed.length === 0) return null;
 
-    const currentUserGroup = feed[currentUserIndex];
-    const currentStory = currentUserGroup.stories[currentStoryIndex];
+    const safeUserIndex =
+        currentUserIndex >= 0 && currentUserIndex < feed.length
+            ? currentUserIndex
+            : 0;
+
+    const currentUserGroup = feed[safeUserIndex];
+    const storiesForUser = currentUserGroup?.stories || [];
+
+    if (storiesForUser.length === 0) return null;
+
+    const safeStoryIndex =
+        currentStoryIndex >= 0 && currentStoryIndex < storiesForUser.length
+            ? currentStoryIndex
+            : 0;
+
+    const currentStory = storiesForUser[safeStoryIndex];
 
     const timerRef = useRef(null);
     const startTimeRef = useRef(null);
-    const progressRef = useRef(0); // Store progress between pauses
+    const progressRef = useRef(0);
 
-    // Start/Reset Timer when story changes
+    useEffect(() => {
+        const initial = {};
+        feed.forEach((group) => {
+            group.stories.forEach((story) => {
+                const likes = story.likes || [];
+                const isLiked = !!session && likes.some((id) => id.toString?.() === session.user.id);
+                initial[story._id] = { likeCount: likes.length, isLiked };
+            });
+        });
+        setLikesState(initial);
+    }, [feed, session]);
+
     useEffect(() => {
         setProgress(0);
         progressRef.current = 0;
         startTimer();
-
         return () => clearTimer();
     }, [currentUserIndex, currentStoryIndex]);
 
@@ -43,7 +71,6 @@ export default function StoryViewer({ feed, startIndex = 0, onClose }) {
 
         timerRef.current = setInterval(() => {
             if (isPaused) return;
-
             const elapsed = Date.now() - startTimeRef.current;
             const newProgress = (elapsed / STORY_DURATION) * 100;
 
@@ -53,22 +80,12 @@ export default function StoryViewer({ feed, startIndex = 0, onClose }) {
                 setProgress(newProgress);
                 progressRef.current = newProgress;
             }
-        }, 50); // Update every 50ms for smooth animation
+        }, 30); 
     };
 
     const handlePause = (paused) => {
         setIsPaused(paused);
-        if (paused) {
-            // Just pause the update logic in setInterval, but keep interval running check
-            // Actually better to calculate elapsed time correctly on resume
-            if (timerRef.current && startTimeRef.current) {
-                // capture current progress is enough? 
-                // The interval logic above relies on `startTimeRef`, so if we pause, `Date.now()` keeps increasing.
-                // We need to adjust `startTimeRef` when resuming.
-            }
-        } else {
-            // Resuming: Reset startTime so that (Date.now() - startTime) equals the previous elapsed time
-            // accumulated elapsed = (progress / 100) * DURATION
+        if (!paused) {
             const accumulated = (progressRef.current / 100) * STORY_DURATION;
             startTimeRef.current = Date.now() - accumulated;
         }
@@ -76,33 +93,26 @@ export default function StoryViewer({ feed, startIndex = 0, onClose }) {
 
     const handleNext = () => {
         if (currentStoryIndex < currentUserGroup.stories.length - 1) {
-            // Next story for same user
-            setCurrentStoryIndex(prev => prev + 1);
+            setCurrentStoryIndex((prev) => prev + 1);
         } else {
-            // Next user
             if (currentUserIndex < feed.length - 1) {
-                setCurrentUserIndex(prev => prev + 1);
+                setCurrentUserIndex((prev) => prev + 1);
                 setCurrentStoryIndex(0);
             } else {
-                onClose(); // End of all stories
+                onClose();
             }
         }
     };
 
     const handlePrev = () => {
         if (currentStoryIndex > 0) {
-            // Prev story for same user
-            setCurrentStoryIndex(prev => prev - 1);
+            setCurrentStoryIndex((prev) => prev - 1);
         } else {
-            // Prev user
             if (currentUserIndex > 0) {
                 const prevUserIndex = currentUserIndex - 1;
                 setCurrentUserIndex(prevUserIndex);
-                // Go to last story of previous user? Usually yes.
                 setCurrentStoryIndex(feed[prevUserIndex].stories.length - 1);
             } else {
-                // Start of all stories, maybe close or restart?
-                // standard is stay at start or close. Let's restart story.
                 setCurrentStoryIndex(0);
                 setProgress(0);
                 progressRef.current = 0;
@@ -111,19 +121,50 @@ export default function StoryViewer({ feed, startIndex = 0, onClose }) {
         }
     };
 
+    const currentLikesState = likesState[currentStory._id] || {
+        likeCount: currentStory.likes?.length || 0,
+        isLiked: false,
+    };
+
+    const handleLike = async () => {
+        if (!session) return;
+        try {
+            const res = await fetch(`/api/stories/${currentStory._id}/like`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: session.user.id }),
+            });
+            if (res.ok) {
+                setLikesState((prev) => {
+                    const prevState = prev[currentStory._id] || currentLikesState;
+                    const nextLiked = !prevState.isLiked;
+                    return {
+                        ...prev,
+                        [currentStory._id]: {
+                            isLiked: nextLiked,
+                            likeCount: prevState.likeCount + (nextLiked ? 1 : -1),
+                        },
+                    };
+                });
+            }
+        } catch (error) {
+            console.error("Error liking story:", error);
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-[70] bg-black flex items-center justify-center">
-            {/* Background Blur (Optional) */}
+        <div className="fixed inset-0 z-[70] bg-black md:bg-black/95 backdrop-blur-xl flex items-center justify-center transition-all">
+            {/* Background Image Blur (For desktop cinematic feel) */}
             <div
-                className="absolute inset-0 opacity-30 bg-cover bg-center blur-3xl"
-                style={{ backgroundImage: `url(${currentStory.image})` }}
+                className="absolute inset-0 opacity-40 bg-cover bg-center hidden md:block"
+                style={{ backgroundImage: `url(${currentStory.image})`, filter: 'blur(80px)' }}
             />
 
-            <div className="relative w-full md:max-w-md h-full md:h-[90vh] md:rounded-2xl overflow-hidden bg-gray-900 shadow-2xl">
-
-                {/* Story Content */}
+            <div className="relative w-full md:w-[420px] h-full md:h-[92vh] md:rounded-xl overflow-hidden bg-black shadow-2xl flex flex-col">
+                
+                {/* Content Area */}
                 <div
-                    className="relative w-full h-full bg-black flex items-center justify-center"
+                    className="relative flex-1 flex items-center justify-center overflow-hidden cursor-pointer"
                     onMouseDown={() => handlePause(true)}
                     onMouseUp={() => handlePause(false)}
                     onTouchStart={() => handlePause(true)}
@@ -132,61 +173,105 @@ export default function StoryViewer({ feed, startIndex = 0, onClose }) {
                     <img
                         src={currentStory.image}
                         alt="Story"
-                        className="max-h-full max-w-full object-contain"
+                        className="w-full h-full object-cover select-none"
                     />
+
+                    {/* Gradient Overlays for UI Readability */}
+                    <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+                    {/* Caption Overlay */}
                     {currentStory.text && (
-                        <div className="absolute bottom-20 left-0 right-0 text-center px-6 py-2 bg-black/30 backdrop-blur-sm">
-                            <p className="text-white text-lg font-medium">{currentStory.text}</p>
+                        <div className="absolute bottom-24 left-0 right-0 px-6 py-4 text-center pointer-events-none">
+                            <p className="text-white text-lg font-medium drop-shadow-lg leading-snug">
+                                {currentStory.text}
+                            </p>
                         </div>
                     )}
                 </div>
 
-                {/* Top Overlay: Progress Bars & User Info */}
-                <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent">
-                    {/* Progress Bars */}
-                    <div className="flex gap-1 mb-3">
+                {/* Top Interface: Progress & User */}
+                <div className="absolute top-0 left-0 right-0 p-3 z-20">
+                    <div className="flex gap-1.5 mb-4 px-1">
                         {currentUserGroup.stories.map((story, idx) => (
-                            <div key={story._id} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
+                            <div key={story._id} className="h-[2px] flex-1 bg-white/30 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-white transition-all duration-100 ease-linear"
                                     style={{
                                         width: idx < currentStoryIndex ? '100%' :
-                                            idx === currentStoryIndex ? `${progress}%` : '0%'
+                                               idx === currentStoryIndex ? `${progress}%` : '0%'
                                     }}
                                 />
                             </div>
                         ))}
                     </div>
 
-                    {/* User Info */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-3">
-                            <img
-                                src={currentUserGroup.user.profileImage || '/default-avatar.png'}
-                                alt={currentUserGroup.user.name}
-                                className="w-10 h-10 rounded-full border border-white/50"
-                            />
-                            <div>
-                                <p className="text-white font-semibold text-sm">{currentUserGroup.user.name}</p>
-                                <p className="text-white/70 text-xs">
+                            <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600">
+                                <img
+                                    src={currentUserGroup.user.profileImage || '/default-avatar.png'}
+                                    alt={currentUserGroup.user.name}
+                                    className="w-9 h-9 rounded-full border-2 border-black object-cover"
+                                />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-white font-bold text-sm tracking-wide drop-shadow-md">
+                                    {currentUserGroup.user.name}
+                                </span>
+                                <span className="text-white/80 text-[11px] font-medium uppercase tracking-tighter">
                                     {new Date(currentStory.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
+                                </span>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            {/* Controls for desktop mostly */}
-                            <button onClick={onClose} className="text-white hover:bg-white/20 p-2 rounded-full">
-                                <FiX size={24} />
+                        <div className="flex items-center gap-2">
+                            <button className="text-white p-2">
+                                <FiMoreHorizontal size={20} />
+                            </button>
+                            <button onClick={onClose} className="text-white p-2">
+                                <FiX size={26} />
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Navigation Overlays (invisible click areas) */}
-                <div className="absolute inset-y-0 left-0 w-1/3 z-10" onClick={(e) => { e.stopPropagation(); handlePrev(); }}></div>
-                <div className="absolute inset-y-0 right-0 w-1/3 z-10" onClick={(e) => { e.stopPropagation(); handleNext(); }}></div>
+                {/* Bottom Interface: Interactions */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 flex items-center gap-4 z-20">
+                    <div className="flex-1">
+                        <div className="bg-transparent border border-white/40 rounded-full px-5 py-2.5 backdrop-blur-sm">
+                            <p className="text-white/60 text-sm">Send message...</p>
+                        </div>
+                    </div>
+                    
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleLike(); }}
+                        className="transition-transform active:scale-125 duration-200"
+                    >
+                        {currentLikesState.isLiked ? (
+                            <FaHeart className="text-red-500" size={26} />
+                        ) : (
+                            <FaRegHeart className="text-white" size={26} />
+                        )}
+                        <span className="absolute -top-1 -right-1 bg-white text-black text-[10px] font-bold px-1 rounded-full">
+                            {currentLikesState.likeCount > 0 && currentLikesState.likeCount}
+                        </span>
+                    </button>
 
+                    <button className="text-white transition-transform active:scale-110">
+                        <FaPaperPlane size={22} />
+                    </button>
+                </div>
+
+                {/* Navigation Overlays */}
+                <div 
+                    className="absolute inset-y-0 left-0 w-[20%] z-10 cursor-pointer" 
+                    onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                />
+                <div 
+                    className="absolute inset-y-0 right-0 w-[20%] z-10 cursor-pointer" 
+                    onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                />
             </div>
         </div>
     );

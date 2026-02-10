@@ -10,9 +10,7 @@ export async function GET(request, { params }) {
     const session = await getServerSession(authOptions);
     const { id: userId } = await params; // Use await for params in Next.js 15
     console.log("userId,", userId);
-    if (!session || session.user.id !== userId) {
-      // Allow fetching own profile data, or make it public if needed
-      // For now, restrict to own profile
+    if (!session) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 

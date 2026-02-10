@@ -1,20 +1,20 @@
 // app/api/user/notifications/route.js
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Notification from "@/models/Notification";
-import User from "@/models/User";
 import connectDB from "@/lib/connectDB";
 import mongoose from "mongoose";
 
-export async function GET(request) {
-  await connectDB();
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function GET() {
   try {
+    await connectDB();
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const userId = new mongoose.Types.ObjectId(session.user.id);
 
     // Fetch notifications with sender details
@@ -29,9 +29,9 @@ export async function GET(request) {
       { read: true }
     );
 
-    return Response.json({ notifications });
+    return NextResponse.json({ notifications });
   } catch (error) {
     console.error("Fetch notifications error:", error);
-    return Response.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

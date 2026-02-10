@@ -118,10 +118,10 @@ export async function GET(request) {
             },
             lastMessage: msgGroup.lastMessage
               ? {
-                  content: msgGroup.lastMessage.content,
-                  timestamp: msgGroup.lastMessage.timestamp,
-                  isRead: msgGroup.lastMessage.isRead,
-                }
+                content: msgGroup.lastMessage.content,
+                timestamp: msgGroup.lastMessage.timestamp,
+                isRead: msgGroup.lastMessage.isRead,
+              }
               : null,
             unreadCount: msgGroup.unreadCount,
             messageCount: msgGroup.messageCount,

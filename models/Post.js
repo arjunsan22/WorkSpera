@@ -1,4 +1,24 @@
+
 import mongoose from "mongoose";
+
+const ReplySchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    text: {
+      type: String,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }
+);
 
 const CommentSchema = new mongoose.Schema(
   {
@@ -15,6 +35,7 @@ const CommentSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    replies: [ReplySchema],
   },
   { _id: true }
 );
@@ -39,6 +60,11 @@ const PostSchema = new mongoose.Schema(
     isServiceRequest: {
       type: Boolean,
       default: false,
+    },
+    type: {
+      type: String,
+      enum: ["job", "feed"],
+      default: "feed",
     },
 
     likes: [

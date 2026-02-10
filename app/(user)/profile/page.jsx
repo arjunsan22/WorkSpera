@@ -21,7 +21,7 @@ export default function ProfilePage() {
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const [isEditPostsModalOpen, setIsEditPostsModalOpen] = useState(false);
   const [tempUser, setTempUser] = useState({});
-  const [tempPost, setTempPost] = useState({ caption: '', images: [] }); // Store temporary image URLs or file objects
+  const [tempPost, setTempPost] = useState({ caption: '', images: [], type: 'feed' }); // Store temporary image URLs or file objects
   const [selectedPostForEdit, setSelectedPostForEdit] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
@@ -108,7 +108,7 @@ export default function ProfilePage() {
 
   const closeEditPostsModal = () => {
     setIsEditPostsModalOpen(false);
-    setTempPost({ caption: '', images: [] });
+    setTempPost({ caption: '', images: [], type: 'feed' });
     setSelectedPostForEdit(null);
   };
   //handle follow modal
@@ -193,6 +193,7 @@ export default function ProfilePage() {
           caption: tempPost.caption,
           userId: session.user.id,
           images: uploadedImageUrls,
+          type: tempPost.type,
         }),
       });
 
@@ -215,25 +216,59 @@ export default function ProfilePage() {
       alert('Please add a caption or at least one image.');
       return;
     }
+
+    setIsUploading(true);
+
     try {
-      // For updates, you might need a different approach depending on whether you're replacing images
-      // For simplicity, let's assume updates only modify text and don't change images
+      // Process images: strings are existing URLs, Files need uploading
+      const finalImageUrls = [];
+      const imageList = selectedPostForEdit.images;
+
+      for (const img of imageList) {
+        if (typeof img === 'string') {
+          // Keep existing URL
+          finalImageUrls.push(img);
+        } else if (img instanceof File) {
+          // Upload new file
+          const formData = new FormData();
+          formData.append('image', img);
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (uploadResponse.ok) {
+            const result = await uploadResponse.json();
+            finalImageUrls.push(result.url);
+          } else {
+            console.error('Failed to upload an image, skipping.');
+          }
+        }
+      }
+
       const response = await fetch(`/api/user/posts/${postId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           caption: selectedPostForEdit.caption,
-          // images: selectedPostForEdit.images, // Only if you want to update images too
+          images: finalImageUrls,
         }),
       });
+
       if (!response.ok) {
         throw new Error('Failed to update post');
       }
-      const updatedPost = await response.json();
+      const data = await response.json();
+      const updatedPost = data.post; // Response returns { post: ... }
+
       setPosts(prev => prev.map(p => p._id === postId ? updatedPost : p));
       closeEditPostsModal();
     } catch (error) {
       console.error('Error updating post:', error);
+      alert('Failed to update post. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -476,101 +511,127 @@ export default function ProfilePage() {
           Back to Home
         </Link>
         {/* Profile Header */}
+        {/* Profile Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl p-6 md:p-8 mb-6"
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="relative overflow-hidden bg-slate-900/40 backdrop-blur-2xl border border-slate-800/50 rounded-3xl shadow-2xl p-6 md:p-10 mb-8"
         >
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <div className="relative group">
-              <div className="w-32 h-32 rounded-full ring-4 ring-indigo-500/30 overflow-hidden">
-                <img
-                  src={user.profileImage || 'https://via.placeholder.com/128'}
-                  alt={user.name}
-                  className="w-full h-full object-cover"
-                />
+          {/* Background Decorative Gradient */}
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full pointer-events-none" />
+
+          <div className="relative flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
+
+            {/* --- AVATAR SECTION --- */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="relative flex-shrink-0"
+            >
+              <div className="p-1 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500">
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-900 overflow-hidden bg-slate-800">
+                  <img
+                    src={user.profileImage || 'https://via.placeholder.com/150'}
+                    alt={user.name}
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                  />
+                </div>
               </div>
               <button
                 onClick={openEditProfileModal}
-                className="absolute bottom-2 right-2 bg-indigo-600 text-white rounded-full p-3 hover:bg-indigo-500 transition-all shadow-lg opacity-0 group-hover:opacity-100"
+                className="absolute bottom-2 right-2 bg-indigo-600 text-white rounded-full p-2.5 hover:bg-indigo-500 transition-all shadow-xl border-2 border-slate-900 active:scale-95"
               >
-                <FiCamera className="w-4 h-4" />
+                <FiCamera className="w-5 h-5" />
               </button>
-            </div>
+            </motion.div>
 
-            <div className="flex-1 text-center md:text-left">
-              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
-                <h1 className="text-3xl font-bold text-white">{user.name}</h1>
-                <button
-                  onClick={openEditProfileModal}
-                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 text-slate-200 rounded-xl transition-colors border border-slate-600/50 inline-flex items-center justify-center gap-2"
-                >
-                  <FiEdit3 className="w-4 h-4" />
-                  Edit Profile
-                </button>
-                {/* ✅ NEW: View Resume Button */}
-                {user.resume && (
+            {/* --- INFO SECTION --- */}
+            <div className="flex-1 flex flex-col items-center md:items-start w-full">
+
+              {/* Top Row: Username & Primary Actions */}
+              <div className="flex flex-col md:flex-row items-center gap-4 mb-6 w-full">
+                <h2 className="text-2xl md:text-3xl font-light text-white tracking-tight">
+                  @{user.username}
+                </h2>
+
+                <div className="flex flex-wrap justify-center gap-2">
                   <button
-                    onClick={() => setIsResumeModalOpen(true)}
-                    className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-600/30 rounded-xl transition-colors inline-flex items-center justify-center gap-2"
+                    onClick={openEditProfileModal}
+                    className="px-5 py-1.5 bg-slate-100 hover:bg-white text-slate-900 text-sm font-semibold rounded-lg transition-all active:scale-95"
                   >
-                    <FiFileText className="w-4 h-4" />
-                    Resume
+                    Edit Profile
                   </button>
-                )}
-              </div>
-              <p className="text-slate-400 mb-3">@{user.username}</p>
-              <p className="text-slate-300 mb-4 max-w-2xl">{user.bio || 'No bio yet.'}</p>
 
-              <div className="flex flex-wrap justify-center md:justify-start gap-6 mb-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{posts.length}</p>
-                  <p className="text-slate-400 text-sm">Posts</p>
+                  {user.resume && (
+                    <button
+                      onClick={() => setIsResumeModalOpen(true)}
+                      className="px-5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg border border-slate-700 transition-all flex items-center gap-2"
+                    >
+                      <FiFileText className="w-4 h-4" />
+                      Resume
+                    </button>
+                  )}
                 </div>
+              </div>
+
+              {/* Middle Row: Stats */}
+              <div className="flex items-center justify-around md:justify-start gap-8 md:gap-10 mb-6 w-full md:w-auto py-4 md:py-0 border-y border-slate-800/50 md:border-none">
+                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-2">
+                  <span className="text-lg font-bold text-white">{posts.length}</span>
+                  <span className="text-slate-400 text-sm md:text-base">posts</span>
+                </div>
+
                 <button
-                  onClick={() => {
-                    fetchFollowers();
-                    setShowFollowersModal(true);
-                  }}
-                  className="text-center"
+                  onClick={() => { fetchFollowers(); setShowFollowersModal(true); }}
+                  className="flex flex-col md:flex-row items-center gap-1 md:gap-2 group"
                 >
-                  <p className="text-2xl font-bold text-white">{user.followers?.length || 0}</p>
-                  <p className="text-slate-400 text-sm hover:text-indigo-400 cursor-pointer transition-colors">
-                    Followers
-                  </p>
+                  <span className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
+                    {user.followers?.length || 0}
+                  </span>
+                  <span className="text-slate-400 text-sm md:text-base">followers</span>
                 </button>
+
                 <button
-                  onClick={() => {
-                    fetchFollowing();
-                    setShowFollowingModal(true);
-                  }}
-                  className="text-center"
+                  onClick={() => { fetchFollowing(); setShowFollowingModal(true); }}
+                  className="flex flex-col md:flex-row items-center gap-1 md:gap-2 group"
                 >
-                  <p className="text-2xl font-bold text-white">{user.following?.length || 0}</p>
-                  <p className="text-slate-400 text-sm hover:text-indigo-400 cursor-pointer transition-colors">
-                    Following
-                  </p>
+                  <span className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
+                    {user.following?.length || 0}
+                  </span>
+                  <span className="text-slate-400 text-sm md:text-base">following</span>
                 </button>
               </div>
 
-              <button
-                onClick={openEditPostsModal}
-                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg shadow-indigo-500/20 inline-flex items-center gap-2 font-medium"
-              >
-                <FiPlus className="w-5 h-5" />
-                Manage Posts
-              </button>
+              {/* Bottom Row: Name & Bio */}
+              <div className="text-center md:text-left mb-8">
+                <h1 className="text-lg font-bold text-white mb-1">{user.name}</h1>
+                <p className="text-slate-300 leading-relaxed max-w-lg whitespace-pre-wrap">
+                  {user.bio || 'Digital creator & professional'}
+                </p>
+              </div>
 
-              <div className="flex gap-3 mt-4 md:mt-0 md:ml-4">
+              {/* Management Row: Action Buttons */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">
+                <button
+                  onClick={openEditPostsModal}
+                  className="flex-1 md:flex-none px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/10 active:scale-95"
+                >
+                  <FiPlus className="w-5 h-5" />
+                  Manage Posts
+                </button>
+
                 <button
                   onClick={() => setShowStoryUploader(true)}
-                  className="px-4 py-3 bg-gradient-to-r from-pink-600 to-orange-500 text-white rounded-xl hover:from-pink-500 hover:to-orange-400 transition-all font-medium inline-flex items-center gap-2 shadow-lg"
+                  className="flex-1 md:flex-none px-6 py-2.5 bg-gradient-to-r from-pink-600 to-rose-500 hover:opacity-90 text-white rounded-xl transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-rose-500/10 active:scale-95"
                 >
-                  <FiPlus className="w-5 h-5" /> Add Story
+                  <FiPlus className="w-5 h-5" />
+                  Add Story
                 </button>
+
                 <button
                   onClick={() => setShowStoryManager(true)}
-                  className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all font-medium inline-flex items-center gap-2 border border-slate-600 shadow-lg"
+                  className="px-6 py-2.5 bg-slate-800/50 hover:bg-slate-800 text-white rounded-xl transition-all font-medium border border-slate-700 flex items-center justify-center gap-2 active:scale-95"
                 >
                   Stories
                 </button>
@@ -873,6 +934,19 @@ export default function ProfilePage() {
                   rows="3"
                   className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none mb-3"
                 />
+
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Post Type</label>
+                  <select
+                    value={tempPost.type || 'feed'}
+                    onChange={(e) => setTempPost({ ...tempPost, type: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
+                  >
+                    <option value="feed">Normal Feed</option>
+                    <option value="job">Job Post / Service Request</option>
+                  </select>
+                </div>
+
                 <div className="mb-3">
                   <label className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2">
                     <FiImage className="w-4 h-4" />
@@ -930,15 +1004,40 @@ export default function ProfilePage() {
                     rows="3"
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none mb-3"
                   />
+
+                  {/* Add Images Button for Edit Mode */}
+                  <div className="mb-3">
+                    <label className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2">
+                      <FiImage className="w-4 h-4" />
+                      Add Images
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => {
+                          const files = e.target.files;
+                          if (files && files.length > 0) {
+                            const newFiles = Array.from(files);
+                            setSelectedPostForEdit(prev => ({
+                              ...prev,
+                              images: [...(prev.images || []), ...newFiles]
+                            }));
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
                   {selectedPostForEdit.images && selectedPostForEdit.images.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
                       {selectedPostForEdit.images.map((img, idx) => (
                         <div key={idx} className="relative group">
-                          <img src={img} alt={`Preview ${idx}`} className="w-20 h-20 object-cover rounded-lg" />
+                          <img src={getPreviewUrl(img)} alt={`Preview ${idx}`} className="w-20 h-20 object-cover rounded-lg" />
                           <button
                             type="button"
                             onClick={() => removeImageFromEdit(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-100 transition-opacity" // Changed opacity-0 group-hover:opacity-100 to explicitly visible or handle correctly
                           >
                             <FiX className="w-3 h-3" />
                           </button>
@@ -949,8 +1048,10 @@ export default function ProfilePage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => handleUpdatePost(selectedPostForEdit._id)}
-                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg"
+                      disabled={isUploading}
+                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
                     >
+                      {isUploading && <FiLoader className="animate-spin w-4 h-4" />}
                       Update Post
                     </button>
                     <button
