@@ -1,14 +1,50 @@
 // hooks/useWebRTC.js
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
-export const useWebRTC = (socket, localStream, remoteUserId) => {
+export const useWebRTC = (socket, remoteUserId) => {
+  const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [isCalling, setIsCalling] = useState(false);
   const [isReceivingCall, setIsReceivingCall] = useState(false);
-  const [isInCall, setIsInCall] = useState(false); // ✅ New: tracks if user is actively in a call
+  const [isInCall, setIsInCall] = useState(false);
   const [callerSocketId, setCallerSocketId] = useState(null);
 
   const peerConnection = useRef(null);
+  const pendingOffer = useRef(null);
+
+  // Helper: get user media on demand (only when a call starts)
+  const getLocalStream = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setLocalStream(stream);
+      return stream;
+    } catch (err) {
+      console.error("Camera/mic access denied or unavailable:", err.name, err.message);
+      // Try audio-only as fallback
+      try {
+        const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true,
+        });
+        setLocalStream(audioOnlyStream);
+        return audioOnlyStream;
+      } catch (audioErr) {
+        console.error("Audio also unavailable:", audioErr.name);
+        return null;
+      }
+    }
+  }, []);
+
+  // Helper: stop all tracks in the local stream
+  const stopLocalStream = useCallback(() => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+  }, [localStream]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -16,6 +52,10 @@ export const useWebRTC = (socket, localStream, remoteUserId) => {
       if (peerConnection.current) {
         peerConnection.current.close();
         peerConnection.current = null;
+      }
+      // Stop any active media tracks
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -28,51 +68,8 @@ export const useWebRTC = (socket, localStream, remoteUserId) => {
       const { from, offer } = data;
       setIsReceivingCall(true);
       setCallerSocketId(from);
-
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-      });
-
-      peerConnection.current = pc;
-
-      // Add local stream (your camera/mic)
-      if (localStream) {
-        localStream.getTracks().forEach((track) => {
-          pc.addTrack(track, localStream);
-        });
-      }
-
-      // Set remote description (caller's offer)
-      pc.setRemoteDescription(new RTCSessionDescription(offer))
-        .then(() => {
-          // Create answer
-          return pc.createAnswer();
-        })
-        .then((answer) => {
-          return pc.setLocalDescription(answer);
-        })
-        .then(() => {
-          const answer = pc.localDescription;
-          socket.emit("answer-call", { to: from, answer });
-        })
-        .catch((err) => {
-          console.error("Error handling incoming call:", err);
-        });
-
-      // Handle remote stream (caller's video/audio)
-      pc.ontrack = (event) => {
-        setRemoteStream(event.streams[0]);
-      };
-
-      // Handle ICE candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit("ice-candidate", {
-            to: from,
-            candidate: event.candidate,
-          });
-        }
-      };
+      // Store the offer so we can process it when the user accepts
+      pendingOffer.current = { from, offer };
     };
 
     const handleCallAccepted = (data) => {
@@ -84,7 +81,7 @@ export const useWebRTC = (socket, localStream, remoteUserId) => {
       peerConnection.current
         .setRemoteDescription(new RTCSessionDescription(answer))
         .then(() => {
-          setIsInCall(true); // ✅ Caller: now in call
+          setIsInCall(true);
         })
         .catch((err) => {
           console.error("Failed to set remote description:", err);
@@ -109,7 +106,12 @@ export const useWebRTC = (socket, localStream, remoteUserId) => {
       setRemoteStream(null);
       setIsCalling(false);
       setIsReceivingCall(false);
-      setIsInCall(false); // ✅ Exit call
+      setIsInCall(false);
+      // Stop the local stream when call ends
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+        setLocalStream(null);
+      }
     };
 
     // Attach listeners
@@ -126,14 +128,71 @@ export const useWebRTC = (socket, localStream, remoteUserId) => {
     };
   }, [socket, localStream]);
 
-  // Initiate a call
-  const callUser = (userId) => {
-    if (!socket || !localStream) {
-      console.warn("Cannot call: missing socket or localStream");
+  // Initiate a call — acquires media first, then creates the offer
+  const callUser = useCallback(
+    async (userId) => {
+      if (!socket) {
+        console.warn("Cannot call: missing socket");
+        return;
+      }
+
+      setIsCalling(true);
+
+      // Acquire media on demand
+      const stream = await getLocalStream();
+      if (!stream) {
+        console.warn("Cannot call: failed to get media stream");
+        setIsCalling(false);
+        return;
+      }
+
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+
+      peerConnection.current = pc;
+
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+
+      pc.ontrack = (event) => {
+        setRemoteStream(event.streams[0]);
+      };
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit("ice-candidate", {
+            to: userId,
+            candidate: event.candidate,
+          });
+        }
+      };
+
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit("call-user", { to: userId, offer: pc.localDescription });
+        setIsInCall(true);
+      } catch (err) {
+        console.error("Error creating offer:", err);
+        setIsCalling(false);
+      }
+    },
+    [socket, getLocalStream]
+  );
+
+  // Accept incoming call — acquires media, then processes the stored offer
+  const acceptCall = useCallback(async () => {
+    if (!socket || !pendingOffer.current) {
+      console.warn("Cannot accept call: no pending offer");
       return;
     }
 
-    setIsCalling(true);
+    const { from, offer } = pendingOffer.current;
+
+    // Acquire media on demand
+    const stream = await getLocalStream();
 
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -141,40 +200,44 @@ export const useWebRTC = (socket, localStream, remoteUserId) => {
 
     peerConnection.current = pc;
 
-    localStream.getTracks().forEach((track) => {
-      pc.addTrack(track, localStream);
-    });
+    // Add local stream tracks if available
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+    }
 
+    // Handle remote stream
     pc.ontrack = (event) => {
       setRemoteStream(event.streams[0]);
     };
 
+    // Handle ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         socket.emit("ice-candidate", {
-          to: userId,
+          to: from,
           candidate: event.candidate,
         });
       }
     };
 
-    pc.createOffer()
-      .then((offer) => {
-        return pc.setLocalDescription(offer);
-      })
-      .then(() => {
-        const offer = pc.localDescription;
-        socket.emit("call-user", { to: userId, offer });
-        setIsInCall(true); // ✅ Caller enters call UI immediately
-      })
-      .catch((err) => {
-        console.error("Error creating offer:", err);
-        setIsCalling(false);
-      });
-  };
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit("answer-call", { to: from, answer: pc.localDescription });
+
+      setIsReceivingCall(false);
+      setIsInCall(true);
+      pendingOffer.current = null;
+    } catch (err) {
+      console.error("Error accepting call:", err);
+    }
+  }, [socket, getLocalStream]);
 
   // End call
-  const hangUp = () => {
+  const hangUp = useCallback(() => {
     if (peerConnection.current) {
       peerConnection.current.close();
       peerConnection.current = null;
@@ -185,23 +248,25 @@ export const useWebRTC = (socket, localStream, remoteUserId) => {
       socket.emit("hang-up", { to });
     }
 
+    // Stop local media tracks
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+
     setRemoteStream(null);
     setIsCalling(false);
     setIsReceivingCall(false);
     setIsInCall(false);
-  };
-
-  // Accept incoming call (hide modal only)
-  const acceptCall = () => {
-    setIsReceivingCall(false);
-    setIsInCall(true); // ✅ Receiver also enters call
-  };
+    pendingOffer.current = null;
+  }, [socket, isReceivingCall, callerSocketId, localStream]);
 
   return {
+    localStream,
     remoteStream,
     isCalling,
     isReceivingCall,
-    isInCall, // ✅ Now exposed
+    isInCall,
     callUser,
     hangUp,
     acceptCall,

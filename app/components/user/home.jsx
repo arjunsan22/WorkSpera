@@ -323,7 +323,7 @@ export default function Home({ selectedChatId }) {
       </motion.div>
 
       {/* Chat List Panel */}
-      <div className="w-full lg:w-96 flex flex-col bg-slate-900/30 backdrop-blur-xl border-r border-slate-700/50 mt-16 lg:mt-0">
+      <div className={`${selectedChatId ? 'hidden lg:flex' : 'flex'} w-full lg:w-96 flex-col bg-slate-900/30 backdrop-blur-xl border-r border-slate-700/50 mt-16 lg:mt-0`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-700/50">
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
@@ -407,8 +407,8 @@ export default function Home({ selectedChatId }) {
                     transition={{ delay: index * 0.05 }}
                     onClick={() => handleChatClick(chat.user._id)}
                     className={`group relative p-4 rounded-2xl transition-all cursor-pointer border ${selectedChatId === chat.user._id
-                        ? 'bg-slate-800/80 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
-                        : 'border-transparent hover:bg-gradient-to-r hover:from-indigo-600/10 hover:to-purple-600/10 hover:border-indigo-500/30'
+                      ? 'bg-slate-800/80 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
+                      : 'border-transparent hover:bg-gradient-to-r hover:from-indigo-600/10 hover:to-purple-600/10 hover:border-indigo-500/30'
                       }`}
                   >
                     <div className="flex items-start gap-3">
@@ -565,9 +565,12 @@ export default function Home({ selectedChatId }) {
       </div>
 
       {/* Main Content */}
-      <div className="hidden lg:flex flex-1 overflow-hidden relative bg-slate-900/40 backdrop-blur-md">
+      <div
+        className={`flex-1 overflow-hidden relative bg-slate-900/40 backdrop-blur-md mt-16 lg:mt-0 ${selectedChatId ? 'flex' : 'hidden lg:flex'
+          }`}
+      >
         {selectedChatId ? (
-          <div className="w-full h-full p-4">
+          <div className="w-full h-full p-0 lg:p-4">
             <ChatWindow chatId={selectedChatId} />
           </div>
         ) : (

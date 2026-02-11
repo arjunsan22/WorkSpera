@@ -160,25 +160,25 @@ export default function RegisterPage() {
   const passwordStrength = getPasswordStrength();
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-4">
+    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute top-40 right-20 w-72 h-72 bg-yellow-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-20 left-40 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-        <div className="absolute bottom-40 right-40 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-6000"></div>
+        <div className="absolute top-20 left-20 w-72 h-72 bg-indigo-800 rounded-full mix-blend-screen filter blur-xl opacity-40 animate-blob"></div>
+        <div className="absolute top-40 right-20 w-72 h-72 bg-purple-900 rounded-full mix-blend-screen filter blur-xl opacity-35 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-20 left-40 w-72 h-72 bg-indigo-700 rounded-full mix-blend-screen filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+        <div className="absolute bottom-40 right-40 w-72 h-72 bg-slate-700 rounded-full mix-blend-screen filter blur-xl opacity-30 animate-blob animation-delay-6000"></div>
       </div>
 
       {/* Floating geometric shapes */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-16 h-16 border-4 border-white/20 rounded-lg animate-float"></div>
-        <div className="absolute top-3/4 right-1/4 w-12 h-12 border-4 border-white/20 rotate-45 animate-float animation-delay-2000"></div>
-        <div className="absolute top-1/2 right-1/3 w-8 h-8 bg-white/10 rounded-full animate-float animation-delay-4000"></div>
+        <div className="absolute top-1/4 left-1/4 w-16 h-16 border-4 border-indigo-500/20 rounded-lg animate-float"></div>
+        <div className="absolute top-3/4 right-1/4 w-12 h-12 border-4 border-purple-500/20 rotate-45 animate-float animation-delay-2000"></div>
+        <div className="absolute top-1/2 right-1/3 w-8 h-8 bg-indigo-400/10 rounded-full animate-float animation-delay-4000"></div>
       </div>
 
       {/* Register Card */}
       <div className="relative w-full max-w-md z-10">
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-3xl blur-2xl opacity-50 animate-pulse"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 rounded-3xl blur-2xl opacity-30 animate-pulse"></div>
 
         <div className="relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-10 transform transition-all duration-300 hover:scale-[1.02]">
           {/* Header */}
@@ -334,9 +334,9 @@ export default function RegisterPage() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-gray-600 font-medium">Password Strength</span>
                     <span className={`text-xs font-semibold ${passwordStrength.text === 'Weak' ? 'text-red-500' :
-                        passwordStrength.text === 'Fair' ? 'text-yellow-500' :
-                          passwordStrength.text === 'Good' ? 'text-blue-500' :
-                            'text-green-500'
+                      passwordStrength.text === 'Fair' ? 'text-yellow-500' :
+                        passwordStrength.text === 'Good' ? 'text-blue-500' :
+                          'text-green-500'
                       }`}>{passwordStrength.text}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">

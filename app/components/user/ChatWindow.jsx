@@ -21,12 +21,12 @@ export default function ChatWindow({ chatId }) {
     const [isSending, setIsSending] = useState(false);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
-    const [localStream, setLocalStream] = useState(null);
     const userId = chatId;
     const { socket, isConnected } = useSocket(session?.user?.id);
 
-    // Get WebRTC hook
+    // Get WebRTC hook — media is acquired lazily (only when call starts)
     const {
+        localStream,
         remoteStream,
         isCalling,
         isReceivingCall,
@@ -34,28 +34,7 @@ export default function ChatWindow({ chatId }) {
         callUser,
         hangUp,
         acceptCall,
-    } = useWebRTC(socket, localStream, userId);
-
-    // Get user media on mount (only once)
-    useEffect(() => {
-        const getMedia = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                setLocalStream(stream);
-            } catch (err) {
-                console.error("Camera/mic access denied", err);
-                // alert("Camera and microphone access required for video calls.");
-            }
-        };
-
-        getMedia();
-
-        return () => {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, []);
+    } = useWebRTC(socket, userId);
 
     useEffect(() => {
         if (!session || !userId) return;
@@ -167,30 +146,38 @@ export default function ChatWindow({ chatId }) {
     }
 
     return (
-        <div className="flex flex-col h-full bg-slate-900/50 backdrop-blur-sm rounded-3xl border border-slate-700/50 overflow-hidden relative">
+        <div className="flex flex-col h-full bg-slate-900/50 backdrop-blur-sm lg:rounded-3xl lg:border border-slate-700/50 overflow-hidden relative">
             {/* Header */}
             <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 px-6 py-4 flex items-center justify-between shrink-0 z-10">
-                <div
-                    className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => router.push(`/profile/${chatData.user._id}`)}
-                >
-                    <div className="relative">
-                        <img
-                            src={chatData.user.profileImage || 'https://via.placeholder.com/40'}
-                            alt={chatData.user.name}
-                            className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-700"
-                        />
-                        {chatData.user.isOnline && (
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900"></div>
-                        )}
-                    </div>
-                    <div>
-                        <h2 className="font-semibold text-slate-200">{chatData.user.name}</h2>
-                        <p className="text-xs text-slate-400">
-                            {chatData.user.isOnline ? 'Active now' :
-                                chatData.user.lastSeen ? `Last seen ${new Date(chatData.user.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` :
-                                    'Offline'}
-                        </p>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => router.push('/chat')}
+                        className="lg:hidden p-2 -ml-2 rounded-xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all"
+                    >
+                        <FiArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div
+                        className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => router.push(`/profile/${chatData.user._id}`)}
+                    >
+                        <div className="relative">
+                            <img
+                                src={chatData.user.profileImage || 'https://via.placeholder.com/40'}
+                                alt={chatData.user.name}
+                                className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-700"
+                            />
+                            {chatData.user.isOnline && (
+                                <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900"></div>
+                            )}
+                        </div>
+                        <div>
+                            <h2 className="font-semibold text-slate-200">{chatData.user.name}</h2>
+                            <p className="text-xs text-slate-400">
+                                {chatData.user.isOnline ? 'Active now' :
+                                    chatData.user.lastSeen ? `Last seen ${new Date(chatData.user.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` :
+                                        'Offline'}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
