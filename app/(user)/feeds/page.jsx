@@ -72,17 +72,19 @@ const CommentsModal = ({
                 return (
                   <div key={comment._id} className="space-y-2 animate-fade-in">
                     <div className="flex space-x-3 group">
-                      <img
-                        src={comment.user.profileImage || '/default-avatar.png'}
-                        alt={comment.user.name}
-                        className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-800 group-hover:ring-blue-500 transition-all"
-                      />
+                      <Link href={`/profile/${comment.user._id}`} className="block">
+                        <img
+                          src={comment.user.profileImage || '/default-avatar.png'}
+                          alt={comment.user.name}
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-800 group-hover:ring-blue-500 transition-all"
+                        />
+                      </Link>
                       <div className="flex-1">
                         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-4 border border-gray-700 group-hover:border-gray-600 transition-all">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="font-semibold text-white text-sm">
+                            <Link href={`/profile/${comment.user._id}`} className="font-semibold text-white text-sm hover:underline">
                               {comment.user.name}
-                            </p>
+                            </Link>
                             <span className="text-xs text-gray-500">
                               {new Date(comment.createdAt).toLocaleDateString()}
                             </span>
@@ -128,16 +130,18 @@ const CommentsModal = ({
                                 key={reply._id}
                                 className="flex space-x-2 text-sm"
                               >
-                                <img
-                                  src={reply.user?.profileImage || '/default-avatar.png'}
-                                  alt={reply.user?.name || "User"}
-                                  className="w-7 h-7 rounded-full object-cover ring-2 ring-gray-800"
-                                />
+                                <Link href={`/profile/${reply.user?._id}`} className="block">
+                                  <img
+                                    src={reply.user?.profileImage || '/default-avatar.png'}
+                                    alt={reply.user?.name || "User"}
+                                    className="w-7 h-7 rounded-full object-cover ring-2 ring-gray-800"
+                                  />
+                                </Link>
                                 <div className="flex-1 bg-gray-900/70 rounded-2xl px-3 py-2 border border-gray-800">
                                   <div className="flex items-center justify-between mb-0.5">
-                                    <span className="text-xs font-semibold text-white">
+                                    <Link href={`/profile/${reply.user?._id}`} className="text-xs font-semibold text-white hover:underline">
                                       {reply.user?.name || "User"}
-                                    </span>
+                                    </Link>
                                     <span className="text-[10px] text-gray-500">
                                       {reply.createdAt
                                         ? new Date(reply.createdAt).toLocaleDateString()
@@ -693,7 +697,8 @@ export default function Feeds() {
                     {/* Post Header */}
                     <div className="p-4 md:p-5 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="relative group cursor-pointer">
+
+                        <Link href={`/profile/${post.user._id}`} className="relative group cursor-pointer">
                           <div className="absolute -inset-0.5 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full blur opacity-30 group-hover:opacity-100 transition duration-500"></div>
                           <img
                             src={post.user.profileImage || '/default-avatar.png'}
@@ -701,12 +706,14 @@ export default function Feeds() {
                             className="relative w-11 h-11 rounded-full object-cover border-2 border-slate-900 shadow-lg"
                           />
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900 shadow-sm"></div>
-                        </div>
+                        </Link>
                         <div className="flex flex-col">
-                          <h3 className="font-bold text-white text-[15px] leading-tight hover:text-indigo-400 transition-colors cursor-pointer">
+                          <Link href={`/profile/${post.user._id}`} className="font-bold text-white text-[15px] leading-tight hover:text-indigo-400 transition-colors cursor-pointer">
                             {post.user.name}
-                          </h3>
-                          <p className="text-xs text-slate-500 font-medium">@{post.user.username}</p>
+                          </Link>
+                          <Link href={`/profile/${post.user._id}`} className="text-xs text-slate-500 font-medium hover:text-slate-400 transition-colors">
+                            @{post.user.username}
+                          </Link>
                         </div>
                       </div>
 

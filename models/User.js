@@ -76,6 +76,42 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Professional Profile Fields
+skills: {
+  type: [String],
+  default: [],
+},
+
+
+education: [
+  {
+    institution: String,
+    degree: String,
+    fieldOfStudy: String,
+    startYear: Number,
+    endYear: Number,
+    currentlyStudying: Boolean,
+    description: String,
+  },
+],
+
+links: [
+  {
+    label: String,
+    url: String,
+  },
+],
+
+profileStatus: {
+  type: String,
+  default: "",
+},
+
+about: {
+  type: String,
+  default: "",
+},
+
   },
 
   {

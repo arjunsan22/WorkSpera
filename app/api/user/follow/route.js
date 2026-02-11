@@ -8,73 +8,98 @@ import mongoose from "mongoose";
 import Notification from "@/models/Notification";
 
 export async function POST(request) {
-  await connectDB();
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  const { targetUserId } = await request.json();
-
-  if (!targetUserId) {
-    return NextResponse.json(
-      { message: "Target user ID is required" },
-      { status: 400 }
-    );
-  }
-
-  if (session.user.id === targetUserId) {
-    return NextResponse.json(
-      { message: "You cannot follow yourself" },
-      { status: 400 }
-    );
-  }
-
   try {
+    await connectDB();
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const { targetUserId } = await request.json();
+
+    if (!targetUserId || !mongoose.isValidObjectId(targetUserId)) {
+      return NextResponse.json(
+        { message: "Invalid target user ID" },
+        { status: 400 }
+      );
+    }
+
+    if (session.user.id === targetUserId) {
+      return NextResponse.json(
+        { message: "You cannot follow yourself" },
+        { status: 400 }
+      );
+    }
+
     const currentUserId = new mongoose.Types.ObjectId(session.user.id);
     const targetId = new mongoose.Types.ObjectId(targetUserId);
 
-    const currentUser = await User.findById(currentUserId);
-    const targetUser = await User.findById(targetId);
+    // Fetch both users
+    const [currentUser, targetUser] = await Promise.all([
+      User.findById(currentUserId),
+      User.findById(targetId)
+    ]);
 
     if (!currentUser || !targetUser) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
+    // Initialize arrays if they don't exist
+    if (!currentUser.following) currentUser.following = [];
+    if (!targetUser.followers) targetUser.followers = [];
+
+    // Check if already following
     const isAlreadyFollowing = currentUser.following.some(
-      (id) => id.toString() === targetUserId
+      (id) => id && id.toString() === targetUserId
     );
+
+    let action;
 
     if (isAlreadyFollowing) {
       // Unfollow
       currentUser.following = currentUser.following.filter(
-        (id) => id.toString() !== targetUserId
+        (id) => id && id.toString() !== targetUserId
       );
       targetUser.followers = targetUser.followers.filter(
-        (id) => id.toString() !== session.user.id
+        (id) => id && id.toString() !== session.user.id
       );
+      action = "unfollow";
     } else {
       // Follow
-      currentUser.following.push(targetId);
-      targetUser.followers.push(currentUserId);
-      // Create a notification for the target user
-      // ✅ CREATE NOTIFICATION
-      await Notification.create({
-        recipient: targetId, // The person being followed
-        sender: currentUserId, // The person who followed
-        type: "follow",
-      });
+      // Check if not already in array (double safety)
+      if (!currentUser.following.some(id => id.toString() === targetUserId)) {
+        currentUser.following.push(targetId);
+      }
+      if (!targetUser.followers.some(id => id.toString() === session.user.id)) {
+        targetUser.followers.push(currentUserId);
+      }
+      action = "follow";
+
+      // Create notification safely
+      try {
+        await Notification.create({
+          recipient: targetId,
+          sender: currentUserId,
+          type: "follow",
+        });
+      } catch (notifyError) {
+        console.error("Failed to create notification:", notifyError);
+        // Continue execution, don't fail the request
+      }
     }
 
     await Promise.all([currentUser.save(), targetUser.save()]);
 
     return NextResponse.json({
-      message: isAlreadyFollowing ? "Unfollowed" : "Followed",
-      action: isAlreadyFollowing ? "unfollow" : "follow",
+      message: action === "follow" ? "Followed" : "Unfollowed",
+      action,
     });
   } catch (error) {
-    console.error("Follow API Error:", error);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    console.error("Follow API Critical Error:", error);
+    return NextResponse.json(
+      { message: "Internal Server Error", error: error.message },
+      { status: 500 }
+    );
   }
 }
