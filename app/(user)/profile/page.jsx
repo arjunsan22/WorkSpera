@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiFileText } from 'react-icons/fi';
+import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiFileText, FiBookOpen, FiLink, FiBriefcase } from 'react-icons/fi';
 import Link from 'next/link';
 import StoryUploader from "@/app/components/stories/StoryUploader";
 import MyStoriesManager from "@/app/components/stories/MyStoriesManager";
@@ -51,6 +51,7 @@ export default function ProfilePage() {
       const data = await response.json();
       setUser(data.user);
       setPosts(data.posts);
+      console.log("User Data Fetched (Client):", JSON.stringify(data.user, null, 2)); // 🔍 FULL DEBUG
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -92,9 +93,75 @@ export default function ProfilePage() {
 
   const openEditProfileModal = () => {
     if (user) {
-      setTempUser({ name: user.name, username: user.username, bio: user.bio, profileImage: user.profileImage, resume: user.resume, resumeName: user.resumeName });
+      setTempUser({
+        name: user.name,
+        username: user.username,
+        bio: user.bio,
+        profileImage: user.profileImage,
+        resume: user.resume,
+        resumeName: user.resumeName,
+        profile: user.profile || "",
+        skills: user.skills || [],
+        education: user.education?.map(edu => ({
+          ...edu,
+          startDate: edu.startDate || '',
+          endDate: edu.endDate || '',
+          // cleanup legacy fields
+          startYear: undefined,
+          endYear: undefined
+        })) || [],
+        links: user.links || []
+      });
       setIsEditProfileModalOpen(true);
     }
+  };
+
+  // Helper functions for dynamic fields
+  const handleAddEducation = () => {
+    setTempUser(prev => ({
+      ...prev,
+      education: [...(prev.education || []), { institution: '', degree: '', startDate: '', endDate: '' }]
+    }));
+  };
+
+  const handleRemoveEducation = (index) => {
+    setTempUser(prev => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleEducationChange = (index, field, value) => {
+    const newEducation = [...(tempUser.education || [])];
+    newEducation[index] = { ...newEducation[index], [field]: value };
+    setTempUser(prev => ({ ...prev, education: newEducation }));
+  };
+
+  const handleAddLink = () => {
+    setTempUser(prev => ({
+      ...prev,
+      links: [...(prev.links || []), { label: '', url: '' }]
+    }));
+  };
+
+  const handleRemoveLink = (index) => {
+    setTempUser(prev => ({
+      ...prev,
+      links: prev.links.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleLinkChange = (index, field, value) => {
+    const newLinks = [...(tempUser.links || [])];
+    newLinks[index] = { ...newLinks[index], [field]: value };
+    setTempUser(prev => ({ ...prev, links: newLinks }));
+  };
+
+  const handleSkillsChange = (e) => {
+    // Comma separated string to array
+    const value = e.target.value;
+    const skillsArray = value.split(',').map(s => s.trim()).filter(s => s);
+    setTempUser(prev => ({ ...prev, skills: skillsArray }));
   };
 
   const openEditPostsModal = () => {
@@ -641,6 +708,89 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
+        {/* Professional Profile Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+          className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-3xl p-6 md:p-8 mb-8"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <FiBriefcase className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-xl font-bold text-white">Professional Profile</h2>
+          </div>
+
+          <div className="space-y-8">
+            {/* Summary */}
+            {user.profile && (
+              <div>
+                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2">About</h3>
+                <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">{user.profile}</p>
+              </div>
+            )}
+
+            {/* Skills */}
+            {user.skills && user.skills.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Skills</h3>
+                <div className="flex flex-wrap gap-2">
+                  {user.skills.map((skill, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-lg text-sm">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Education */}
+            {user.education && user.education.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">Education</h3>
+                <div className="space-y-4">
+                  {user.education.map((edu, idx) => (
+                    <div key={idx} className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
+                        <FiBookOpen className="w-5 h-5 text-slate-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-medium">{edu.institution}</h4>
+                        <p className="text-slate-400 text-sm">{edu.degree}</p>
+                        <p className="text-slate-500 text-xs mt-1">
+                          {edu.startDate && !isNaN(new Date(edu.startDate)) ? new Date(edu.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : ''}
+                          {' - '}
+                          {edu.currentlyStudying ? 'Present' : (edu.endDate && !isNaN(new Date(edu.endDate)) ? new Date(edu.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : '')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Links */}
+            {user.links && user.links.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Links</h3>
+                <div className="flex flex-wrap gap-4">
+                  {user.links.map((link, idx) => (
+                    <a
+                      key={idx}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors"
+                    >
+                      <FiLink className="w-4 h-4" />
+                      <span className="underline decoration-indigo-500/30">{link.label}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
         {/* Posts Grid Header */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -766,7 +916,7 @@ export default function ProfilePage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md"
+              className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar"
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">Edit Profile</h2>
@@ -874,6 +1024,140 @@ export default function ProfilePage() {
                         />
                       </label>
                     )}
+                  </div>
+                </div>
+
+                {/* Professional Fields */}
+                <div className="pt-4 border-t border-slate-700/50">
+                  <h3 className="text-lg font-bold text-white mb-4">Professional Profile</h3>
+
+                  {/* Summary */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Professional Summary</label>
+                    <textarea
+                      value={tempUser.profile || ''}
+                      onChange={(e) => handleInputChange(e, 'profile')}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-slate-500 resize-none"
+                      placeholder="Summarize your professional experience..."
+                      rows="4"
+                    />
+                  </div>
+
+                  {/* Skills */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Skills (Comma separated)</label>
+                    <input
+                      type="text"
+                      defaultValue={tempUser.skills?.join(', ') || ''}
+                      onBlur={handleSkillsChange}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-slate-500"
+                      placeholder="e.g. React, Node.js, Design"
+                    />
+                  </div>
+
+                  {/* Education */}
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-medium text-slate-300">Education</label>
+                      <button onClick={handleAddEducation} type="button" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                        <FiPlus /> Add
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {tempUser.education?.map((edu, idx) => (
+                        <div key={idx} className="p-3 bg-slate-700/30 rounded-xl border border-slate-700/50 relative group">
+                          <button
+                            onClick={() => handleRemoveEducation(idx)}
+                            className="absolute top-2 right-2  text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                            <input
+                              type="text"
+                              value={edu.institution}
+                              onChange={(e) => handleEducationChange(idx, 'institution', e.target.value)}
+                              placeholder="Institution"
+                              className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                            />
+                            <input
+                              type="text"
+                              value={edu.degree}
+                              onChange={(e) => handleEducationChange(idx, 'degree', e.target.value)}
+                              placeholder="Degree"
+                              className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <input
+                              type="date"
+                              value={edu.startDate ? new Date(edu.startDate).toISOString().split('T')[0] : ''}
+                              onChange={(e) => handleEducationChange(idx, 'startDate', e.target.value)}
+                              placeholder="Start Date"
+                              className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                            />
+                            <div className="flex flex-col">
+                              <input
+                                type="date"
+                                value={edu.endDate ? new Date(edu.endDate).toISOString().split('T')[0] : ''}
+                                onChange={(e) => handleEducationChange(idx, 'endDate', e.target.value)}
+                                placeholder="End Date"
+                                className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white disabled:opacity-50"
+                                disabled={edu.currentlyStudying}
+                              />
+                              <label className="flex items-center gap-2 mt-2 text-xs text-slate-400 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={edu.currentlyStudying || false}
+                                  onChange={(e) => {
+                                    handleEducationChange(idx, 'currentlyStudying', e.target.checked);
+                                    if (e.target.checked) handleEducationChange(idx, 'endDate', '');
+                                  }}
+                                  className="rounded bg-slate-700 border-slate-600 text-indigo-500 focus:ring-0 w-3 h-3"
+                                />
+                                Currently studying
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Links */}
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-medium text-slate-300">Links</label>
+                      <button onClick={handleAddLink} type="button" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                        <FiPlus /> Add
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {tempUser.links?.map((link, idx) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={link.label}
+                            onChange={(e) => handleLinkChange(idx, 'label', e.target.value)}
+                            placeholder="Label (e.g. Portfolio)"
+                            className="w-1/3 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                          />
+                          <input
+                            type="text"
+                            value={link.url}
+                            onChange={(e) => handleLinkChange(idx, 'url', e.target.value)}
+                            placeholder="URL"
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                          />
+                          <button
+                            onClick={() => handleRemoveLink(idx)}
+                            className="text-slate-500 hover:text-red-400"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

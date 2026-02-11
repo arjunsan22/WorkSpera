@@ -1,16 +1,18 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowLeft, FiGrid, FiImage, FiHeart, FiMessageCircle, FiCalendar, FiUserPlus, FiCheck } from 'react-icons/fi';
+import { FiArrowLeft, FiGrid, FiImage, FiHeart, FiMessageCircle, FiCalendar, FiUserPlus, FiCheck, FiBookOpen, FiLink, FiBriefcase } from 'react-icons/fi';
 import Link from 'next/link';
 
 export default function UserProfilePage() {
     const { id } = useParams();
     const router = useRouter();
     const { data: session } = useSession();
+
 
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
@@ -231,6 +233,89 @@ export default function UserProfilePage() {
                             </div>
 
                         </div>
+                    </div>
+                </motion.div>
+
+                {/* Professional Profile Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, duration: 0.5 }}
+                    className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-3xl p-6 md:p-8 mb-8"
+                >
+                    <div className="flex items-center gap-2 mb-6">
+                        <FiBriefcase className="w-5 h-5 text-indigo-400" />
+                        <h2 className="text-xl font-bold text-white">Professional Profile</h2>
+                    </div>
+
+                    <div className="space-y-8">
+                        {/* Summary */}
+                        {user.profile && (
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2">About</h3>
+                                <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">{user.profile}</p>
+                            </div>
+                        )}
+
+                        {/* Skills */}
+                        {user.skills && user.skills.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Skills</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {user.skills.map((skill, idx) => (
+                                        <span key={idx} className="px-3 py-1 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-lg text-sm">
+                                            {skill}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Education */}
+                        {user.education && user.education.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">Education</h3>
+                                <div className="space-y-4">
+                                    {user.education.map((edu, idx) => (
+                                        <div key={idx} className="flex gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
+                                                <FiBookOpen className="w-5 h-5 text-slate-400" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-white font-medium">{edu.institution}</h4>
+                                                <p className="text-slate-400 text-sm">{edu.degree}</p>
+                                                <p className="text-slate-500 text-xs mt-1">
+                                                    {edu.startDate && !isNaN(new Date(edu.startDate)) ? new Date(edu.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : ''}
+                                                    {' - '}
+                                                    {edu.currentlyStudying ? 'Present' : (edu.endDate && !isNaN(new Date(edu.endDate)) ? new Date(edu.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : '')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Links */}
+                        {user.links && user.links.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Links</h3>
+                                <div className="flex flex-wrap gap-4">
+                                    {user.links.map((link, idx) => (
+                                        <a
+                                            key={idx}
+                                            href={link.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors"
+                                        >
+                                            <FiLink className="w-4 h-4" />
+                                            <span className="underline decoration-indigo-500/30">{link.label}</span>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </motion.div>
 

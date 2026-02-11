@@ -711,9 +711,15 @@ export default function Feeds() {
                           <Link href={`/profile/${post.user._id}`} className="font-bold text-white text-[15px] leading-tight hover:text-indigo-400 transition-colors cursor-pointer">
                             {post.user.name}
                           </Link>
-                          <Link href={`/profile/${post.user._id}`} className="text-xs text-slate-500 font-medium hover:text-slate-400 transition-colors">
-                            @{post.user.username}
-                          </Link>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                            <Link href={`/profile/${post.user._id}`} className="hover:text-slate-400 transition-colors">
+                              @{post.user.username}
+                            </Link>
+                            <span>•</span>
+                            <span>
+                              {new Date(post.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
                         </div>
                       </div>
 

@@ -9,8 +9,9 @@ import {
   FiX, FiUser, FiTrash2, FiRefreshCw, FiMenu
 } from 'react-icons/fi';
 import { FaWhatsapp } from "react-icons/fa";
+import ChatWindow from "./ChatWindow";
 
-export default function Home() {
+export default function Home({ selectedChatId }) {
   const router = useRouter();
   const { data: session } = useSession();
   const [chats, setChats] = useState([]);
@@ -405,7 +406,10 @@ export default function Home() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     onClick={() => handleChatClick(chat.user._id)}
-                    className="group relative p-4 rounded-2xl hover:bg-gradient-to-r hover:from-indigo-600/10 hover:to-purple-600/10 transition-all cursor-pointer border border-transparent hover:border-indigo-500/30"
+                    className={`group relative p-4 rounded-2xl transition-all cursor-pointer border ${selectedChatId === chat.user._id
+                        ? 'bg-slate-800/80 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
+                        : 'border-transparent hover:bg-gradient-to-r hover:from-indigo-600/10 hover:to-purple-600/10 hover:border-indigo-500/30'
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="relative flex-shrink-0">
@@ -561,14 +565,22 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="hidden lg:flex flex-1 items-center justify-center p-8">
-        <div className="text-center max-w-md">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
-            <FiMessageSquare className="w-12 h-12 text-white" />
+      <div className="hidden lg:flex flex-1 overflow-hidden relative bg-slate-900/40 backdrop-blur-md">
+        {selectedChatId ? (
+          <div className="w-full h-full p-4">
+            <ChatWindow chatId={selectedChatId} />
           </div>
-          <h2 className="text-3xl font-bold text-slate-200 mb-3">Your messages are waiting</h2>
-          <p className="text-slate-400 text-lg">Open a chat and start connecting now.</p>
-        </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
+                <FiMessageSquare className="w-12 h-12 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-slate-200 mb-3">Your messages are waiting</h2>
+              <p className="text-slate-400 text-lg">Open a chat and start connecting now.</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <style jsx global>{`

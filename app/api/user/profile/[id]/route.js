@@ -50,8 +50,7 @@ export async function PUT(request, { params }) {
 
     const body = await request.json();
     console.log("PUT /api/user/profile - Body:", body); // 🔍 Debug Log
-    const { name, username, bio, profileImage, resume, resumeName } = body;
-
+    const { name, username, bio, profileImage, resume, resumeName, skills, education, links, profile } = body;
     // Basic validation
     if (username && !/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
       return Response.json(
@@ -62,7 +61,18 @@ export async function PUT(request, { params }) {
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { name, username, bio, profileImage, resume, resumeName },
+      {
+        name,
+        username,
+        bio,
+        profileImage,
+        resume,
+        resumeName,
+        skills,
+        education,
+        links,
+        profile
+      },
       { new: true, runValidators: true } // Return updated doc and run schema validators
     ).select("-password"); // Exclude password from response
 
@@ -70,6 +80,7 @@ export async function PUT(request, { params }) {
       return Response.json({ error: "User not found" }, { status: 404 });
     }
 
+    console.log("UPDATED USER FROM DB:", updatedUser.toObject()); // 🔍 CRITICAL DEBUG LOG
     return Response.json({ user: updatedUser.toObject() });
   } catch (error) {
     console.error("Error updating profile:", error);
