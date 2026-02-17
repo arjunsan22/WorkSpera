@@ -22,7 +22,7 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.553.0",
     "mongoose": "^8.19.3",
-    "next": "16.0.3",
+    "next": "^15.1.7",
     "next-auth": "^4.24.13",
     "nodemailer": "^7.0.12",
     "react": "19.2.0",
@@ -37,7 +37,7 @@
     "@tailwindcss/postcss": "^4",
     "concurrently": "^9.2.1",
     "eslint": "^9",
-    "eslint-config-next": "16.0.3",
+    "eslint-config-next": "^15.1.7",
     "tailwindcss": "^4"
   }
 }
