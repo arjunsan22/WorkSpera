@@ -2,9 +2,11 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import User from "@/models/User";
-import connectDB from "@/lib/connectDB";
+import User from "../../../../models/User";
+import connectDB from "../../../../lib/connectDB";
 import bcrypt from "bcryptjs";
+
+export const dynamic = "force-dynamic";
 
 export const authOptions = {
   providers: [
@@ -65,16 +67,12 @@ export const authOptions = {
       return session;
     },
     async signOut({ token }) {
-      if (token.sub) {
-        // token.sub contains the user ID
+      if (token?.sub) {
         try {
           await User.findByIdAndUpdate(
             token.sub,
             { isOnline: false, lastSeen: new Date() },
             { new: true }
-          );
-          console.log(
-            `Auth: Updated user ${token.sub} to offline on sign out.`
           );
         } catch (error) {
           console.error("Auth: Error updating status on sign out:", error);
