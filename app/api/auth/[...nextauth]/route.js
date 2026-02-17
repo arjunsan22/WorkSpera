@@ -8,6 +8,10 @@ import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error("❌ NEXTAUTH_SECRET is missing!");
+}
+
 export const authOptions = {
   providers: [
     CredentialsProvider({
@@ -17,36 +21,48 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        await connectDB();
+        try {
+          await connectDB();
 
-        const user = await User.findOne({ email: credentials.email });
-        if (!user) throw new Error("No user found");
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error("Missing email or password");
+          }
 
-        // Check if user is verified
-        if (!user.isVerified) {
-          throw new Error("Invalid credentials");
+          const user = await User.findOne({ email: credentials.email.toLowerCase() });
+
+          if (!user) {
+            throw new Error("No user found with that email");
+          }
+
+          if (!user.isVerified) {
+            throw new Error("Your account is not verified yet");
+          }
+
+          if (!user.password) {
+            throw new Error("Please log in with Google");
+          }
+
+          const isValid = await bcrypt.compare(credentials.password, user.password);
+          if (!isValid) {
+            throw new Error("Incorrect password");
+          }
+
+          return {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            username: user.username,
+            image: user.profileImage,
+          };
+        } catch (error) {
+          console.error("Auth authorize error:", error.message);
+          throw error;
         }
-
-        if (!user.password) throw new Error("Use Google to login");
-
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-        if (!isValid) throw new Error("Invalid credentials");
-
-        return {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          username: user.username,
-          image: user.profileImage,
-        };
       },
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: process.env.GOOGLE_CLIENT_ID || "temp",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "temp",
     }),
   ],
   callbacks: {
@@ -54,7 +70,6 @@ export const authOptions = {
       if (user) {
         token.id = user.id;
         token.username = user.username;
-        token.image = user.image;
       }
       return token;
     },
@@ -62,28 +77,15 @@ export const authOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.username = token.username;
-        session.user.image = token.image;
       }
       return session;
     },
-    async signOut({ token }) {
-      if (token?.sub) {
-        try {
-          await User.findByIdAndUpdate(
-            token.sub,
-            { isOnline: false, lastSeen: new Date() },
-            { new: true }
-          );
-        } catch (error) {
-          console.error("Auth: Error updating status on sign out:", error);
-        }
-      }
-      return true;
-    },
+  },
+  session: {
+    strategy: "jwt",
   },
   pages: {
     signIn: "/login",
-    signOut: "/logout",
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
