@@ -1,0 +1,15 @@
+{
+    "name": "chatapp-socket-server",
+    "version": "1.0.0",
+    "description": "Standalone Socket.IO server for the chatapp",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js"
+    },
+    "dependencies": {
+        "dotenv": "^17.2.3",
+        "mongoose": "^8.19.3",
+        "socket.io": "^4.8.1"
+    }
+}
