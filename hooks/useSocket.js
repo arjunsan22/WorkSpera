@@ -12,10 +12,12 @@ export const useSocket = (userId) => {
 
     console.log('useSocket: Attempting to connect for userId:', userId);
 
-    const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
-      path: '/api/socket', // Must match server.js path
+    const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000', {
+      path: '/socket.io/', // Use default path for standalone server
       transports: ['websocket', 'polling'],
-      timeout: 20000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      timeout: 60000,
       autoConnect: true,
     });
 
