@@ -1,7 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiSearch, FiMessageSquare, FiBookOpen, FiPlusCircle,
@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fi';
 import { FaWhatsapp } from "react-icons/fa";
 import ChatWindow from "./ChatWindow";
+import { useSocket } from '@/hooks/useSocket';
 
 export default function Home({ selectedChatId }) {
   const router = useRouter();
@@ -25,9 +26,125 @@ export default function Home({ selectedChatId }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  // Socket connection for real-time chat list updates
+  const { socket, isConnected: socketConnected } = useSocket(session?.user?.id);
 
   useEffect(() => {
     fetchChats();
+  }, []);
+
+  // Listen for incoming messages to update chat list in real-time
+  useEffect(() => {
+    if (!socket || !session?.user?.id) return;
+
+    const handleNewMessage = (message) => {
+      const otherUserId = message.senderId?.toString?.() || message.senderId;
+
+      // Don't process messages sent by ourselves (those are handled by ChatWindow)
+      if (otherUserId === session.user.id) return;
+
+      setChats(prevChats => {
+        const existingChatIndex = prevChats.findIndex(
+          chat => chat.user._id === otherUserId
+        );
+
+        let updatedChats;
+
+        if (existingChatIndex !== -1) {
+          // Chat exists — update it and move to top
+          const existingChat = prevChats[existingChatIndex];
+          const updatedChat = {
+            ...existingChat,
+            lastMessage: {
+              content: message.content,
+              timestamp: message.timestamp || new Date().toISOString(),
+              isRead: false,
+            },
+            // Only increment unread if this chat is NOT currently open
+            unreadCount: selectedChatId === otherUserId
+              ? existingChat.unreadCount
+              : (existingChat.unreadCount || 0) + 1,
+          };
+
+          updatedChats = [
+            updatedChat,
+            ...prevChats.filter((_, i) => i !== existingChatIndex),
+          ];
+        } else {
+          // New chat from a user not in the list — add at top
+          // We'll fetch that user's info to display properly
+          fetchChats();
+          return prevChats;
+        }
+
+        return updatedChats;
+      });
+
+      // Show toast notification if the message is NOT from the currently open chat
+      if (selectedChatId !== otherUserId) {
+        // Find the sender name from existing chats
+        setChats(prev => {
+          const senderChat = prev.find(c => c.user._id === otherUserId);
+          const senderName = senderChat?.user?.name || 'Someone';
+          const senderImage = senderChat?.user?.profileImage || null;
+          showToast(senderName, message.content, senderImage, otherUserId);
+          return prev; // don't modify
+        });
+      }
+    };
+
+    socket.on('receive-message', handleNewMessage);
+
+    // Also handle messages sent by us to update chat list
+    const handleSentMessage = (message) => {
+      const otherUserId = message.receiverId?.toString?.() || message.receiverId;
+      if (!otherUserId) return;
+
+      setChats(prevChats => {
+        const existingChatIndex = prevChats.findIndex(
+          chat => chat.user._id === otherUserId
+        );
+
+        if (existingChatIndex !== -1) {
+          const existingChat = prevChats[existingChatIndex];
+          const updatedChat = {
+            ...existingChat,
+            lastMessage: {
+              content: message.content,
+              timestamp: message.timestamp || new Date().toISOString(),
+              isRead: true,
+            },
+          };
+          return [
+            updatedChat,
+            ...prevChats.filter((_, i) => i !== existingChatIndex),
+          ];
+        } else {
+          // New conversation — refetch to get proper user info
+          fetchChats();
+          return prevChats;
+        }
+      });
+    };
+
+    socket.on('message-sent-full', handleSentMessage);
+
+    return () => {
+      socket.off('receive-message', handleNewMessage);
+      socket.off('message-sent-full', handleSentMessage);
+    };
+  }, [socket, session?.user?.id, selectedChatId]);
+
+  // Toast notification helper
+  const showToast = useCallback((senderName, content, senderImage, senderId) => {
+    const id = Date.now();
+    setToast({ id, senderName, content, senderImage, senderId });
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => {
+      setToast(prev => (prev?.id === id ? null : prev));
+    }, 4000);
   }, []);
 
   const fetchChats = async () => {
@@ -585,6 +702,50 @@ export default function Home({ selectedChatId }) {
           </div>
         )}
       </div>
+
+      {/* Toast Notification for new messages */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -40, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -40, x: '-50%' }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            onClick={() => {
+              router.push(`/chat/${toast.senderId}`);
+              setToast(null);
+            }}
+            className="fixed top-6 left-1/2 z-[100] cursor-pointer w-[90%] max-w-sm"
+          >
+            <div className="bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-2xl p-4 shadow-2xl shadow-indigo-500/10 flex items-center gap-3">
+              {toast.senderImage ? (
+                <img
+                  src={toast.senderImage}
+                  alt={toast.senderName}
+                  className="w-11 h-11 rounded-xl object-cover ring-2 ring-indigo-500/40 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                  {toast.senderName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-200 truncate">{toast.senderName}</p>
+                <p className="text-xs text-slate-400 truncate">{toast.content}</p>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setToast(null);
+                }}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 transition-colors flex-shrink-0"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {

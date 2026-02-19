@@ -46,7 +46,8 @@ export default function ChatWindow({ chatId }) {
             const handleReceiveMessage = (message) => {
                 // Only add the message if it belongs to this conversation
                 // i.e., the sender is the person we're currently chatting with
-                if (message.senderId === userId) {
+                const msgSenderId = message.senderId?.toString?.() || message.senderId;
+                if (msgSenderId === userId) {
                     setMessages(prev => [...prev, message]);
                 }
             };

@@ -215,6 +215,8 @@ async function startServer() {
                             status: "delivered",
                             messageId: savedMessage._id,
                         });
+                        // Also emit the full message back to sender for chat list updates
+                        io.to(senderId).emit("message-sent-full", savedMessage);
                     }
                 } catch (error) {
                     console.error("❌ Error processing message:", error);
