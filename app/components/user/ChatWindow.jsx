@@ -43,12 +43,18 @@ export default function ChatWindow({ chatId }) {
 
     useEffect(() => {
         if (socket && userId) {
-            socket.on('receive-message', (message) => {
-                setMessages(prev => [...prev, message]);
-            });
+            const handleReceiveMessage = (message) => {
+                // Only add the message if it belongs to this conversation
+                // i.e., the sender is the person we're currently chatting with
+                if (message.senderId === userId) {
+                    setMessages(prev => [...prev, message]);
+                }
+            };
+
+            socket.on('receive-message', handleReceiveMessage);
 
             return () => {
-                socket.off('receive-message');
+                socket.off('receive-message', handleReceiveMessage);
             };
         }
     }, [socket, userId]);
