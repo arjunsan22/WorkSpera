@@ -151,13 +151,25 @@ async function startServer() {
 
             // ── Video Call Events ──────────────────────────────────────
             socket.on("call-user", (data) => {
-                const { to, offer } = data;
-                console.log(`📞 Call from ${socket.id} to user ${to}`);
-                io.to(to).emit("incoming-call", { from: socket.id, offer });
+                const { to, offer, callerName, callerImage } = data;
+                console.log(`📞 Call from ${socket.id} (${callerName}) to user ${to}`);
+                // Find the caller's userId from their rooms
+                const callerRooms = Array.from(socket.rooms);
+                const callerUserId = callerRooms.find(
+                    (room) => room !== socket.id && mongoose.Types.ObjectId.isValid(room)
+                );
+                io.to(to).emit("incoming-call", {
+                    from: socket.id,
+                    offer,
+                    callerUserId: callerUserId || null,
+                    callerName: callerName || "Someone",
+                    callerImage: callerImage || null,
+                });
             });
 
             socket.on("answer-call", (data) => {
                 const { to, answer } = data;
+                console.log(`📞 Call answered, sending to ${to}`);
                 io.to(to).emit("call-accepted", { answer });
             });
 
@@ -168,7 +180,14 @@ async function startServer() {
 
             socket.on("hang-up", (data) => {
                 const { to } = data;
+                console.log(`📞 Hang up sent to ${to}`);
                 io.to(to).emit("call-ended");
+            });
+
+            socket.on("reject-call", (data) => {
+                const { to } = data;
+                console.log(`📞 Call rejected, notifying ${to}`);
+                io.to(to).emit("call-rejected");
             });
 
             // ── Room / Online Status ───────────────────────────────────

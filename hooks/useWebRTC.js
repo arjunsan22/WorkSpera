@@ -7,10 +7,17 @@ export const useWebRTC = (socket, remoteUserId) => {
   const [isCalling, setIsCalling] = useState(false);
   const [isReceivingCall, setIsReceivingCall] = useState(false);
   const [isInCall, setIsInCall] = useState(false);
-  const [callerSocketId, setCallerSocketId] = useState(null);
+  const [callerInfo, setCallerInfo] = useState(null); // { socketId, userId, name, profileImage }
 
   const peerConnection = useRef(null);
   const pendingOffer = useRef(null);
+  const remoteUserIdRef = useRef(remoteUserId);
+  const localStreamRef = useRef(null);
+
+  // Keep ref in sync
+  useEffect(() => {
+    remoteUserIdRef.current = remoteUserId;
+  }, [remoteUserId]);
 
   // Helper: get user media on demand (only when a call starts)
   const getLocalStream = useCallback(async () => {
@@ -20,6 +27,7 @@ export const useWebRTC = (socket, remoteUserId) => {
         audio: true,
       });
       setLocalStream(stream);
+      localStreamRef.current = stream;
       return stream;
     } catch (err) {
       console.error("Camera/mic access denied or unavailable:", err.name, err.message);
@@ -30,6 +38,7 @@ export const useWebRTC = (socket, remoteUserId) => {
           audio: true,
         });
         setLocalStream(audioOnlyStream);
+        localStreamRef.current = audioOnlyStream;
         return audioOnlyStream;
       } catch (audioErr) {
         console.error("Audio also unavailable:", audioErr.name);
@@ -40,11 +49,13 @@ export const useWebRTC = (socket, remoteUserId) => {
 
   // Helper: stop all tracks in the local stream
   const stopLocalStream = useCallback(() => {
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+    const stream = localStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
       setLocalStream(null);
+      localStreamRef.current = null;
     }
-  }, [localStream]);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -54,8 +65,8 @@ export const useWebRTC = (socket, remoteUserId) => {
         peerConnection.current = null;
       }
       // Stop any active media tracks
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -65,9 +76,15 @@ export const useWebRTC = (socket, remoteUserId) => {
     if (!socket) return;
 
     const handleIncomingCall = (data) => {
-      const { from, offer } = data;
+      const { from, offer, callerUserId, callerName, callerImage } = data;
+      console.log("📞 Incoming call from:", callerName || from);
       setIsReceivingCall(true);
-      setCallerSocketId(from);
+      setCallerInfo({
+        socketId: from,
+        userId: callerUserId,
+        name: callerName || "Someone",
+        profileImage: callerImage || null,
+      });
       // Store the offer so we can process it when the user accepts
       pendingOffer.current = { from, offer };
     };
@@ -81,6 +98,8 @@ export const useWebRTC = (socket, remoteUserId) => {
       peerConnection.current
         .setRemoteDescription(new RTCSessionDescription(answer))
         .then(() => {
+          console.log("✅ Call accepted, remote description set");
+          setIsCalling(false);
           setIsInCall(true);
         })
         .catch((err) => {
@@ -99,6 +118,7 @@ export const useWebRTC = (socket, remoteUserId) => {
     };
 
     const handleCallEnded = () => {
+      console.log("📞 Call ended by remote");
       if (peerConnection.current) {
         peerConnection.current.close();
         peerConnection.current = null;
@@ -107,11 +127,23 @@ export const useWebRTC = (socket, remoteUserId) => {
       setIsCalling(false);
       setIsReceivingCall(false);
       setIsInCall(false);
+      setCallerInfo(null);
       // Stop the local stream when call ends
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-        setLocalStream(null);
+      stopLocalStream();
+    };
+
+    const handleCallRejected = () => {
+      console.log("📞 Call rejected by remote");
+      if (peerConnection.current) {
+        peerConnection.current.close();
+        peerConnection.current = null;
       }
+      setRemoteStream(null);
+      setIsCalling(false);
+      setIsReceivingCall(false);
+      setIsInCall(false);
+      setCallerInfo(null);
+      stopLocalStream();
     };
 
     // Attach listeners
@@ -119,18 +151,60 @@ export const useWebRTC = (socket, remoteUserId) => {
     socket.on("call-accepted", handleCallAccepted);
     socket.on("ice-candidate", handleIceCandidate);
     socket.on("call-ended", handleCallEnded);
+    socket.on("call-rejected", handleCallRejected);
 
     return () => {
       socket.off("incoming-call", handleIncomingCall);
       socket.off("call-accepted", handleCallAccepted);
       socket.off("ice-candidate", handleIceCandidate);
       socket.off("call-ended", handleCallEnded);
+      socket.off("call-rejected", handleCallRejected);
     };
-  }, [socket, localStream]);
+  }, [socket, stopLocalStream]);
+
+  // Create a peer connection with proper ICE servers
+  const createPeerConnection = useCallback(
+    (targetId) => {
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" },
+        ],
+      });
+
+      pc.ontrack = (event) => {
+        console.log("🎥 Received remote track:", event.track.kind);
+        if (event.streams && event.streams[0]) {
+          setRemoteStream(event.streams[0]);
+        }
+      };
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && socket) {
+          socket.emit("ice-candidate", {
+            to: targetId,
+            candidate: event.candidate,
+          });
+        }
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log("ICE connection state:", pc.iceConnectionState);
+        if (pc.iceConnectionState === "failed" || pc.iceConnectionState === "disconnected") {
+          console.warn("ICE connection failed/disconnected");
+        }
+      };
+
+      return pc;
+    },
+    [socket]
+  );
 
   // Initiate a call — acquires media first, then creates the offer
+  // callerName and callerImage are passed so the receiver knows who is calling
   const callUser = useCallback(
-    async (userId) => {
+    async (userId, callerName, callerImage) => {
       if (!socket) {
         console.warn("Cannot call: missing socket");
         return;
@@ -146,40 +220,31 @@ export const useWebRTC = (socket, remoteUserId) => {
         return;
       }
 
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-      });
-
+      const pc = createPeerConnection(userId);
       peerConnection.current = pc;
 
       stream.getTracks().forEach((track) => {
         pc.addTrack(track, stream);
       });
 
-      pc.ontrack = (event) => {
-        setRemoteStream(event.streams[0]);
-      };
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit("ice-candidate", {
-            to: userId,
-            candidate: event.candidate,
-          });
-        }
-      };
-
       try {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        socket.emit("call-user", { to: userId, offer: pc.localDescription });
-        setIsInCall(true);
+        socket.emit("call-user", {
+          to: userId,
+          offer: pc.localDescription,
+          callerName: callerName || "Someone",
+          callerImage: callerImage || null,
+        });
+        // Don't set isInCall yet — wait for the answer
+        console.log("📞 Call offer sent to:", userId);
       } catch (err) {
         console.error("Error creating offer:", err);
         setIsCalling(false);
+        stopLocalStream();
       }
     },
-    [socket, getLocalStream]
+    [socket, getLocalStream, createPeerConnection, stopLocalStream]
   );
 
   // Accept incoming call — acquires media, then processes the stored offer
@@ -194,10 +259,7 @@ export const useWebRTC = (socket, remoteUserId) => {
     // Acquire media on demand
     const stream = await getLocalStream();
 
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-    });
-
+    const pc = createPeerConnection(from);
     peerConnection.current = pc;
 
     // Add local stream tracks if available
@@ -206,21 +268,6 @@ export const useWebRTC = (socket, remoteUserId) => {
         pc.addTrack(track, stream);
       });
     }
-
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      setRemoteStream(event.streams[0]);
-    };
-
-    // Handle ICE candidates
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("ice-candidate", {
-          to: from,
-          candidate: event.candidate,
-        });
-      }
-    };
 
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -231,10 +278,21 @@ export const useWebRTC = (socket, remoteUserId) => {
       setIsReceivingCall(false);
       setIsInCall(true);
       pendingOffer.current = null;
+      console.log("✅ Call accepted, answer sent to:", from);
     } catch (err) {
       console.error("Error accepting call:", err);
     }
-  }, [socket, getLocalStream]);
+  }, [socket, getLocalStream, createPeerConnection]);
+
+  // Reject incoming call
+  const rejectCall = useCallback(() => {
+    if (socket && pendingOffer.current) {
+      socket.emit("reject-call", { to: pendingOffer.current.from });
+    }
+    setIsReceivingCall(false);
+    setCallerInfo(null);
+    pendingOffer.current = null;
+  }, [socket]);
 
   // End call
   const hangUp = useCallback(() => {
@@ -243,23 +301,25 @@ export const useWebRTC = (socket, remoteUserId) => {
       peerConnection.current = null;
     }
 
-    if (socket) {
-      const to = isReceivingCall ? callerSocketId : socket.id;
-      socket.emit("hang-up", { to });
+    if (socket && remoteUserIdRef.current) {
+      // Always send hang-up to the remote user's room (userId)
+      socket.emit("hang-up", { to: remoteUserIdRef.current });
+      // Also send to caller socket ID if we have it
+      if (callerInfo?.socketId) {
+        socket.emit("hang-up", { to: callerInfo.socketId });
+      }
     }
 
     // Stop local media tracks
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
-    }
+    stopLocalStream();
 
     setRemoteStream(null);
     setIsCalling(false);
     setIsReceivingCall(false);
     setIsInCall(false);
+    setCallerInfo(null);
     pendingOffer.current = null;
-  }, [socket, isReceivingCall, callerSocketId, localStream]);
+  }, [socket, callerInfo, stopLocalStream]);
 
   return {
     localStream,
@@ -267,8 +327,10 @@ export const useWebRTC = (socket, remoteUserId) => {
     isCalling,
     isReceivingCall,
     isInCall,
+    callerInfo,
     callUser,
     hangUp,
     acceptCall,
+    rejectCall,
   };
 };

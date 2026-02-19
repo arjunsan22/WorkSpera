@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSend, FiArrowLeft, FiMoreVertical, FiPaperclip, FiImage, FiPhone } from 'react-icons/fi';
+import { FiSend, FiArrowLeft, FiMoreVertical, FiPaperclip, FiImage, FiPhone, FiPhoneOff } from 'react-icons/fi';
 import { useSocket } from '@/hooks/useSocket';
 import VideoCallModal from '@/app/components/user/VideoCallModal';
 import IncomingCallModal from '@/app/components/user/IncomingCallModal';
@@ -31,9 +31,11 @@ export default function ChatWindow({ chatId }) {
         isCalling,
         isReceivingCall,
         isInCall,
+        callerInfo,
         callUser,
         hangUp,
         acceptCall,
+        rejectCall,
     } = useWebRTC(socket, userId);
 
     useEffect(() => {
@@ -190,7 +192,7 @@ export default function ChatWindow({ chatId }) {
 
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => callUser(userId)}
+                        onClick={() => callUser(userId, session?.user?.name, session?.user?.image)}
                         className="p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                         disabled={isCalling || isInCall}
                         title="Start Video Call"
@@ -275,7 +277,30 @@ export default function ChatWindow({ chatId }) {
                 </div>
             </div>
 
-            {/* Call Modals */}
+            {/* Calling state - show overlay while waiting for answer */}
+            {isCalling && !isInCall && (
+                <div className="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center">
+                    <motion.div
+                        animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6"
+                    >
+                        <FiPhone className="w-10 h-10 text-white" />
+                    </motion.div>
+                    <p className="text-white text-xl font-semibold mb-2">Calling...</p>
+                    <p className="text-slate-400 text-sm mb-8">Waiting for {chatData?.user?.name || 'friend'} to answer</p>
+                    <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={hangUp}
+                        className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center text-white shadow-lg shadow-red-500/30"
+                    >
+                        <FiPhoneOff className="w-6 h-6" />
+                    </motion.button>
+                </div>
+            )}
+
+            {/* Active call */}
             {isInCall && (
                 <VideoCallModal
                     localStream={localStream}
@@ -284,12 +309,15 @@ export default function ChatWindow({ chatId }) {
                 />
             )}
 
+            {/* Incoming call */}
             {isReceivingCall && (
                 <IncomingCallModal
+                    callerInfo={callerInfo}
                     onAccept={acceptCall}
-                    onReject={hangUp}
+                    onReject={rejectCall}
                 />
             )}
         </div>
     );
 }
+
