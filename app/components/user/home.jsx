@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiSearch, FiMessageSquare, FiBookOpen, FiPlusCircle,
   FiSettings, FiBell, FiLogOut, FiUserPlus, FiUsers,
-  FiX, FiUser, FiTrash2, FiRefreshCw, FiMenu
+  FiX, FiUser, FiTrash2, FiRefreshCw, FiMenu, FiCheck
 } from 'react-icons/fi';
 import { FaWhatsapp } from "react-icons/fa";
 import ChatWindow from "./ChatWindow";
@@ -440,14 +440,14 @@ export default function Home({ selectedChatId }) {
       </motion.div>
 
       {/* Chat List Panel */}
-      <div className={`${selectedChatId ? 'hidden lg:flex' : 'flex'} w-full lg:w-96 flex-col bg-slate-900/30 backdrop-blur-xl border-r border-slate-700/50 mt-16 lg:mt-0`}>
+      <div className={`${selectedChatId ? 'hidden lg:flex' : 'flex'} ${showFindUsers && !selectedChatId ? 'w-full' : 'w-full lg:w-96'} flex-col bg-slate-900/30 backdrop-blur-xl ${showFindUsers && !selectedChatId ? '' : 'border-r border-slate-700/50'} mt-16 lg:mt-0`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-700/50">
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
             {showFindUsers ? (
               <>
                 <FiUserPlus className="w-6 h-6 text-indigo-400" />
-                Find Users
+                Build Network
               </>
             ) : (
               <>
@@ -581,7 +581,7 @@ export default function Home({ selectedChatId }) {
               )}
             </div>
           ) : (
-            <div className="p-4 space-y-2">
+            <div className="p-4">
               {loadingUsers ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
@@ -595,113 +595,130 @@ export default function Home({ selectedChatId }) {
                   <p className="text-slate-500">Try searching with different keywords</p>
                 </div>
               ) : (
-                filteredUsers.map((user, index) => (
-                  <motion.div
-                    key={user._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => startNewChat(user._id)}
-                    className="group relative p-4 rounded-2xl hover:bg-gradient-to-r hover:from-indigo-600/10 hover:to-purple-600/10 transition-all cursor-pointer border border-transparent hover:border-indigo-500/30"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="relative flex-shrink-0">
-                        {user.profileImage ? (
-                          <div className="w-14 h-14 rounded-4xl bg-slate-200 overflow-hidden shadow-lg">
-                            <img
-                              src={user.profileImage}
-                              alt={user.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                // Optional: hide broken image and fallback via CSS or state
-                                e.target.style.display = 'none';
-                              }}
-                            />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {filteredUsers.map((user, index) => (
+                    <motion.div
+                      key={user._id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03, duration: 0.3 }}
+                      onClick={() => router.push(`/profile/${user._id}`)}
+                      className="group relative bg-slate-800/40 hover:bg-slate-800/70 rounded-xl border border-slate-700/40 hover:border-slate-600/60 transition-all duration-200 cursor-pointer overflow-hidden"
+                    >
+                      {/* Card Content */}
+                      <div className="p-4">
+                        <div className="flex items-start gap-3">
+                          {/* Profile Image */}
+                          <div className="relative flex-shrink-0">
+                            {user.profileImage ? (
+                              <div className="w-12 h-12 rounded-full bg-slate-700 overflow-hidden ring-2 ring-slate-600/50 group-hover:ring-indigo-500/30 transition-all">
+                                <img
+                                  src={user.profileImage}
+                                  alt={user.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-base ring-2 ring-slate-600/50 group-hover:ring-indigo-500/30 transition-all">
+                                {user.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            {user.isOnline && (
+                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-slate-800" />
+                            )}
                           </div>
-                        ) : (
-                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                            {user.name.charAt(0).toUpperCase()}
+
+                          {/* User Info */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-slate-100 truncate text-sm group-hover:text-white transition-colors">
+                              {user.name}
+                            </h3>
+                            <p className="text-xs text-slate-500 mb-1.5">@{user.username}</p>
+
+                            {/* Professional Summary */}
+                            {user.profile && (
+                              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                                {user.profile}
+                              </p>
+                            )}
                           </div>
-                        )}
+                        </div>
 
-                        {user.isOnline && (
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-900 shadow-lg" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-slate-200 truncate">{user.name}</h3>
-                        <p className="text-sm text-slate-500">@{user.username}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent triggering chat click
-                            startNewChat(user._id);
-                          }}
-                          className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-all shadow shadow-indigo-500/20 cursor-pointer"
-                        >
-                          Message
-                        </button>
-
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              const res = await fetch('/api/user/follow', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ targetUserId: user._id }),
-                              });
-                              const data = await res.json();
-                              if (res.ok) {
-                                // ✅ Instead of optimistic update, just refetch the whole list
-                                // This ensures 100% consistency and solves your problem
-                                await fetchAllUsers();
-                              } else {
-                                alert(data.message || 'Action failed');
+                        {/* Follow Button */}
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                const res = await fetch('/api/user/follow', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ targetUserId: user._id }),
+                                });
+                                const data = await res.json();
+                                if (res.ok) {
+                                  await fetchAllUsers();
+                                } else {
+                                  alert(data.message || 'Action failed');
+                                }
+                              } catch (err) {
+                                alert('Network error');
                               }
-                            } catch (err) {
-                              alert('Network error');
-                            }
-                          }}
-                          className={`px-3 py-1.5 text-xs rounded-lg transition-all shadow ${user.isFollowing
-                            ? 'bg-gray-600 text-white hover:bg-gray-500'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-500 cursor-pointer'
-                            }`}
-                        >
-                          {user.isFollowing ? 'Following' : 'Follow'}
-                        </button>
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 flex items-center gap-1.5 ${user.isFollowing
+                              ? 'bg-slate-700/60 text-slate-300 border border-slate-600/50 hover:bg-slate-600/60 hover:text-white'
+                              : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30'
+                              }`}
+                          >
+                            {user.isFollowing ? (
+                              <>
+                                <FiCheck className="w-3.5 h-3.5" />
+                                Following
+                              </>
+                            ) : (
+                              <>
+                                <FiUserPlus className="w-3.5 h-3.5" />
+                                Follow
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))
+                    </motion.div>
+                  ))}
+                </div>
               )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Main Content */}
-      <div
-        className={`flex-1 overflow-hidden relative bg-slate-900/40 backdrop-blur-md mt-16 lg:mt-0 ${selectedChatId ? 'flex' : 'hidden lg:flex'
-          }`}
-      >
-        {selectedChatId ? (
-          <div className="w-full h-full p-0 lg:p-4">
-            <ChatWindow chatId={selectedChatId} />
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center max-w-md">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
-                <FiMessageSquare className="w-12 h-12 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-slate-200 mb-3">Your messages are waiting</h2>
-              <p className="text-slate-400 text-lg">Open a chat and start connecting now.</p>
+      {/* Main Content — hidden when Find Users is active */}
+      {!showFindUsers && (
+        <div
+          className={`flex-1 overflow-hidden relative bg-slate-900/40 backdrop-blur-md mt-16 lg:mt-0 ${selectedChatId ? 'flex' : 'hidden lg:flex'
+            }`}
+        >
+          {selectedChatId ? (
+            <div className="w-full h-full p-0 lg:p-4">
+              <ChatWindow chatId={selectedChatId} />
             </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-8">
+              <div className="text-center max-w-md">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
+                  <FiMessageSquare className="w-12 h-12 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-slate-200 mb-3">Your messages are waiting</h2>
+                <p className="text-slate-400 text-lg">Open a chat and start connecting now.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Toast Notification for new messages */}
       <AnimatePresence>

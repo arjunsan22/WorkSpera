@@ -22,7 +22,7 @@ export async function GET(request) {
     // Fetch all other users
     const otherUsers = await User.find({
       _id: { $ne: currentUserId },
-    }).select("name username profileImage isOnline lastSeen");
+    }).select("name username profileImage isOnline lastSeen profile");
 
     // Convert to plain objects and check if current user follows them
     const usersData = otherUsers.map((user) => {
@@ -36,6 +36,7 @@ export async function GET(request) {
         profileImage: user.profileImage,
         isOnline: user.isOnline,
         lastSeen: user.lastSeen,
+        profile: user.profile || "",
         isFollowing,
       };
     });

@@ -200,6 +200,14 @@ export default function UserProfilePage() {
                                         </>
                                     )}
                                 </button>
+
+                                <button
+                                    onClick={() => router.push(`/chat/${id}`)}
+                                    className="px-6 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 shadow-indigo-500/20"
+                                >
+                                    <FiMessageCircle className="w-4 h-4" />
+                                    Message
+                                </button>
                             </div>
 
                             {/* Middle Row: Stats */}
