@@ -1,8 +1,6 @@
 // app/api/upload/route.js
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import { v4 as uuidv4 } from "uuid"; // You might need to install this: npm install uuid
+import cloudinary from "@/lib/cloudinary";
 
 export async function POST(request) {
   try {
@@ -17,23 +15,23 @@ export async function POST(request) {
     const bytes = await image.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Create uploads directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    // Upload to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: "image",
+          folder: "uploads",
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(buffer);
+    });
 
-    // Generate a unique filename
-    const extension = path.extname(image.name);
-    const filename = `${uuidv4()}${extension}`;
-    const filepath = path.join(uploadDir, filename);
-
-    // Write the file to the uploads directory
-    fs.writeFileSync(filepath, buffer);
-
-    // Return the public URL
-    const url = `/uploads/${filename}`;
-    return NextResponse.json({ url });
+    // Return the Cloudinary URL
+    return NextResponse.json({ url: result.secure_url });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(
