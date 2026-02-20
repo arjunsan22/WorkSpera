@@ -14,10 +14,29 @@ export const useWebRTC = (socket, remoteUserId) => {
   const remoteUserIdRef = useRef(remoteUserId);
   const localStreamRef = useRef(null);
 
+  // Queue for ICE candidates that arrive before remote description is set
+  const iceCandidatesQueue = useRef([]);
+
   // Keep ref in sync
   useEffect(() => {
     remoteUserIdRef.current = remoteUserId;
   }, [remoteUserId]);
+
+  // Helper: process queued ICE candidates
+  const processIceQueue = useCallback(async () => {
+    if (!peerConnection.current || !iceCandidatesQueue.current.length) return;
+
+    console.log(`❄️ Processing ${iceCandidatesQueue.current.length} queued ICE candidates`);
+
+    for (const candidate of iceCandidatesQueue.current) {
+      try {
+        await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) {
+        console.error("Error adding queued ICE candidate:", err);
+      }
+    }
+    iceCandidatesQueue.current = [];
+  }, []);
 
   // Helper: get user media on demand (only when a call starts)
   const getLocalStream = useCallback(async () => {
@@ -55,6 +74,7 @@ export const useWebRTC = (socket, remoteUserId) => {
       setLocalStream(null);
       localStreamRef.current = null;
     }
+    iceCandidatesQueue.current = [];
   }, []);
 
   // Cleanup on unmount
@@ -101,6 +121,8 @@ export const useWebRTC = (socket, remoteUserId) => {
           console.log("✅ Call accepted, remote description set");
           setIsCalling(false);
           setIsInCall(true);
+          // Process any queued candidates now that remote description is set
+          processIceQueue();
         })
         .catch((err) => {
           console.error("Failed to set remote description:", err);
@@ -109,12 +131,17 @@ export const useWebRTC = (socket, remoteUserId) => {
 
     const handleIceCandidate = (data) => {
       const { candidate } = data;
-      if (!peerConnection.current || !candidate) return;
-      peerConnection.current
-        .addIceCandidate(new RTCIceCandidate(candidate))
-        .catch((err) => {
-          console.error("Error adding received ICE candidate:", err);
-        });
+      if (!candidate) return;
+
+      // If PC exists and has remote description, add immediately
+      if (peerConnection.current && peerConnection.current.remoteDescription) {
+        peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate))
+          .catch(err => console.error("Error adding received ICE candidate:", err));
+      } else {
+        // Otherwise queue it
+        console.log("❄️ Queueing ICE candidate (remote description not ready or PC missing)");
+        iceCandidatesQueue.current.push(candidate);
+      }
     };
 
     const handleCallEnded = () => {
@@ -160,7 +187,7 @@ export const useWebRTC = (socket, remoteUserId) => {
       socket.off("call-ended", handleCallEnded);
       socket.off("call-rejected", handleCallRejected);
     };
-  }, [socket, stopLocalStream]);
+  }, [socket, stopLocalStream, processIceQueue]);
 
   // Create a peer connection with proper ICE servers
   const createPeerConnection = useCallback(
@@ -211,6 +238,7 @@ export const useWebRTC = (socket, remoteUserId) => {
       }
 
       setIsCalling(true);
+      iceCandidatesQueue.current = []; // Reset queue
 
       // Acquire media on demand
       const stream = await getLocalStream();
@@ -271,6 +299,9 @@ export const useWebRTC = (socket, remoteUserId) => {
 
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      // Process queued candidates
+      await processIceQueue();
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit("answer-call", { to: from, answer: pc.localDescription });
@@ -282,7 +313,7 @@ export const useWebRTC = (socket, remoteUserId) => {
     } catch (err) {
       console.error("Error accepting call:", err);
     }
-  }, [socket, getLocalStream, createPeerConnection]);
+  }, [socket, getLocalStream, createPeerConnection, processIceQueue]);
 
   // Reject incoming call
   const rejectCall = useCallback(() => {
