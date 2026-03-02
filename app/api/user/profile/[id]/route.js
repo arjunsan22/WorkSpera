@@ -1,12 +1,14 @@
 // app/api/user/profile/[id]/route.js
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust path
+import connectDB from "@/lib/connectDB";
 import User from "@/models/User";
 import Post from "@/models/Post";
 import mongoose from "mongoose";
 
 export async function GET(request, { params }) {
   try {
+    await connectDB();
     const session = await getServerSession(authOptions);
     const { id: userId } = await params; // Use await for params in Next.js 15
     console.log("userId,", userId);
@@ -41,6 +43,7 @@ export async function GET(request, { params }) {
 // Update profile data (PUT)
 export async function PUT(request, { params }) {
   try {
+    await connectDB();
     const session = await getServerSession(authOptions);
     const { id: userId } = await params; // Use await for params in Next.js 15
 

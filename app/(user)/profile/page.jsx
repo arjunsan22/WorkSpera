@@ -2,17 +2,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiFileText, FiBookOpen, FiLink, FiBriefcase } from 'react-icons/fi';
+import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiFileText, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUserPlus } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa';
 import Link from 'next/link';
 import StoryUploader from "@/app/components/stories/StoryUploader";
 import MyStoriesManager from "@/app/components/stories/MyStoriesManager";
 
 export default function ProfilePage() {
+  const router = useRouter();
   // Story States
   const [showStoryUploader, setShowStoryUploader] = useState(false);
   const [showStoryManager, setShowStoryManager] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const { data: session } = useSession();
   const [user, setUser] = useState(null);
@@ -40,6 +47,44 @@ export default function ProfilePage() {
       fetchProfileData();
     }
   }, [session]);
+
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch('/api/user/notifications');
+        if (!res.ok) return;
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        const unread = data.notifications?.filter((n) => !n.read).length || 0;
+        setUnreadCount(unread);
+      } catch (err) {
+        console.error('Failed to fetch notifications', err);
+      }
+    };
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleLogout = async () => {
+    if (!session?.user?.id) {
+      signOut({ callbackUrl: '/login' });
+      return;
+    }
+    const userId = session.user.id;
+    try {
+      await fetch('/api/user/update-status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, isOnline: false }),
+      });
+    } catch (dbError) {
+      console.error('Error calling update-status API on logout:', dbError);
+    } finally {
+      await signOut({ callbackUrl: '/login' });
+    }
+  };
 
   const fetchProfileData = async () => {
     setIsLoading(true);
@@ -566,730 +611,821 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
-        {/* 🔹 Back Navigation */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 
-                   transition-colors font-medium mb-4"
-        >
-          <FiArrowLeft className="w-5 h-5" />
-          Back to Home
-        </Link>
-        {/* Profile Header */}
-        {/* Profile Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="relative overflow-hidden bg-slate-900/40 backdrop-blur-2xl border border-slate-800/50 rounded-3xl shadow-2xl p-6 md:p-10 mb-8"
-        >
-          {/* Background Decorative Gradient */}
-          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full pointer-events-none" />
-          <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full pointer-events-none" />
-
-          <div className="relative flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
-
-            {/* --- AVATAR SECTION --- */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="relative flex-shrink-0"
-            >
-              <div className="p-1 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500">
-                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-900 overflow-hidden bg-slate-800">
-                  <img
-                    src={user.profileImage || 'https://via.placeholder.com/150'}
-                    alt={user.name}
-                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={openEditProfileModal}
-                className="absolute bottom-2 right-2 bg-indigo-600 text-white rounded-full p-2.5 hover:bg-indigo-500 transition-all shadow-xl border-2 border-slate-900 active:scale-95"
-              >
-                <FiCamera className="w-5 h-5" />
-              </button>
-            </motion.div>
-
-            {/* --- INFO SECTION --- */}
-            <div className="flex-1 flex flex-col items-center md:items-start w-full">
-
-              {/* Top Row: Username & Primary Actions */}
-              <div className="flex flex-col md:flex-row items-center gap-4 mb-6 w-full">
-                <h2 className="text-2xl md:text-3xl font-light text-white tracking-tight">
-                  @{user.username}
-                </h2>
-
-                <div className="flex flex-wrap justify-center gap-2">
-                  <button
-                    onClick={openEditProfileModal}
-                    className="px-5 py-1.5 bg-slate-100 hover:bg-white text-slate-900 text-sm font-semibold rounded-lg transition-all active:scale-95"
-                  >
-                    Edit Profile
-                  </button>
-
-                  {user.resume && (
-                    <button
-                      onClick={() => setIsResumeModalOpen(true)}
-                      className="px-5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg border border-slate-700 transition-all flex items-center gap-2"
-                    >
-                      <FiFileText className="w-4 h-4" />
-                      Resume
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Middle Row: Stats */}
-              <div className="flex items-center justify-around md:justify-start gap-8 md:gap-10 mb-6 w-full md:w-auto py-4 md:py-0 border-y border-slate-800/50 md:border-none">
-                <div className="flex flex-col md:flex-row items-center gap-1 md:gap-2">
-                  <span className="text-lg font-bold text-white">{posts.length}</span>
-                  <span className="text-slate-400 text-sm md:text-base">posts</span>
-                </div>
-
-                <button
-                  onClick={() => { fetchFollowers(); setShowFollowersModal(true); }}
-                  className="flex flex-col md:flex-row items-center gap-1 md:gap-2 group"
-                >
-                  <span className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
-                    {user.followers?.length || 0}
-                  </span>
-                  <span className="text-slate-400 text-sm md:text-base">followers</span>
-                </button>
-
-                <button
-                  onClick={() => { fetchFollowing(); setShowFollowingModal(true); }}
-                  className="flex flex-col md:flex-row items-center gap-1 md:gap-2 group"
-                >
-                  <span className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
-                    {user.following?.length || 0}
-                  </span>
-                  <span className="text-slate-400 text-sm md:text-base">following</span>
-                </button>
-              </div>
-
-              {/* Bottom Row: Name & Bio */}
-              <div className="text-center md:text-left mb-8">
-                <h1 className="text-lg font-bold text-white mb-1">{user.name}</h1>
-                <p className="text-slate-300 leading-relaxed max-w-lg whitespace-pre-wrap">
-                  {user.bio || 'Digital creator & professional'}
-                </p>
-              </div>
-
-              {/* Management Row: Action Buttons */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">
-                <button
-                  onClick={openEditPostsModal}
-                  className="flex-1 md:flex-none px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/10 active:scale-95"
-                >
-                  <FiPlus className="w-5 h-5" />
-                  Manage Posts
-                </button>
-
-                <button
-                  onClick={() => setShowStoryUploader(true)}
-                  className="flex-1 md:flex-none px-6 py-2.5 bg-gradient-to-r from-pink-600 to-rose-500 hover:opacity-90 text-white rounded-xl transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-rose-500/10 active:scale-95"
-                >
-                  <FiPlus className="w-5 h-5" />
-                  Add Story
-                </button>
-
-                <button
-                  onClick={() => setShowStoryManager(true)}
-                  className="px-6 py-2.5 bg-slate-800/50 hover:bg-slate-800 text-white rounded-xl transition-all font-medium border border-slate-700 flex items-center justify-center gap-2 active:scale-95"
-                >
-                  Stories
-                </button>
-              </div>
-
+    <div className="flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 overflow-hidden">
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50">
+        <div className="flex items-center justify-between px-4 py-4">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all"
+          >
+            <FiMenu className="w-6 h-6" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
+              <FaWhatsapp className="w-5 h-5 text-white" />
             </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+              WorkSpera
+            </span>
           </div>
-        </motion.div>
-
-        {/* Professional Profile Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-          className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-3xl p-6 md:p-8 mb-8"
-        >
-          <div className="flex items-center gap-2 mb-6">
-            <FiBriefcase className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-xl font-bold text-white">Professional Profile</h2>
-          </div>
-
-          <div className="space-y-8">
-            {/* Summary */}
-            {user.profile && (
-              <div>
-                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2">About</h3>
-                <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">{user.profile}</p>
-              </div>
-            )}
-
-            {/* Skills */}
-            {user.skills && user.skills.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Skills</h3>
-                <div className="flex flex-wrap gap-2">
-                  {user.skills.map((skill, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-lg text-sm">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Education */}
-            {user.education && user.education.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">Education</h3>
-                <div className="space-y-4">
-                  {user.education.map((edu, idx) => (
-                    <div key={idx} className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
-                        <FiBookOpen className="w-5 h-5 text-slate-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-white font-medium">{edu.institution}</h4>
-                        <p className="text-slate-400 text-sm">{edu.degree}</p>
-                        <p className="text-slate-500 text-xs mt-1">
-                          {edu.startDate && !isNaN(new Date(edu.startDate)) ? new Date(edu.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : ''}
-                          {' - '}
-                          {edu.currentlyStudying ? 'Present' : (edu.endDate && !isNaN(new Date(edu.endDate)) ? new Date(edu.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : '')}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Links */}
-            {user.links && user.links.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Links</h3>
-                <div className="flex flex-wrap gap-4">
-                  {user.links.map((link, idx) => (
-                    <a
-                      key={idx}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors"
-                    >
-                      <FiLink className="w-4 h-4" />
-                      <span className="underline decoration-indigo-500/30">{link.label}</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Posts Grid Header */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="flex items-center gap-2 mb-4 px-2"
-        >
-          <FiGrid className="w-5 h-5 text-indigo-400" />
-          <h2 className="text-xl font-bold text-white">Posts</h2>
-        </motion.div>
-
-        {/* Posts Grid */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          <AnimatePresence>
-            {posts.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="col-span-full flex flex-col items-center justify-center py-16 px-6 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-2xl"
-              >
-                <div className="w-20 h-20 bg-slate-700/50 rounded-2xl flex items-center justify-center mb-4">
-                  <FiImage className="w-10 h-10 text-slate-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-200 mb-2">No posts yet</h3>
-                <p className="text-slate-400 text-center mb-6">Share your first moment with your followers</p>
-                <button
-                  onClick={openEditPostsModal}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg shadow-indigo-500/20 inline-flex items-center gap-2"
-                >
-                  <FiPlus className="w-5 h-5" />
-                  Create Post
-                </button>
-              </motion.div>
-            ) : (
-              posts.map((post, index) => (
-                <motion.div
-                  key={post._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="group bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all shadow-lg hover:shadow-indigo-500/10"
-                >
-                  {post.image && post.image.length > 0 && (
-                    <div className="relative aspect-square overflow-hidden bg-slate-900">
-                      <img
-                        src={post.image[0]}
-                        alt={`Post ${index + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      {post.image.length > 1 && (
-                        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
-                          +{post.image.length - 1}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="p-4">
-                    <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption}</p>
-
-                    <div className="flex items-center justify-between text-slate-400 text-sm">
-                      <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1">
-                          <FiHeart className="w-4 h-4" />
-                          {post.likes?.length || 0}
-                        </span>
-                        <span
-                          className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPost(post);
-                            setCommentModalOpen(true);
-                          }}
-                        >
-                          <FiMessageCircle className="w-4 h-4" />
-                          {post.comments?.length || 0}
-                        </span>
-                      </div>
-                      <span className="flex items-center gap-1 text-xs">
-                        <FiCalendar className="w-3 h-3" />
-                        {new Date(post.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))
-            )}
-          </AnimatePresence>
-        </motion.div>
+          <button
+            onClick={() => router.push('/feeds')}
+            className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all"
+          >
+            <FiBookOpen className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
-      {/* Edit Profile Modal */}
-      {showStoryUploader && (
-        <StoryUploader
-          onClose={() => setShowStoryUploader(false)}
-          onUploadSuccess={() => {
-            // Optional: maybe refresh something
-          }}
-        />
-      )}
-
-      {showStoryManager && (
-        <MyStoriesManager onClose={() => setShowStoryManager(false)} />
-      )}
-
+      {/* Sidebar Overlay for Mobile */}
       <AnimatePresence>
-        {isEditProfileModalOpen && (
+        {sidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onClick={closeEditProfileModal}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Edit Profile</h2>
-                <button onClick={closeEditProfileModal} className="text-slate-400 hover:text-white transition-colors">
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Profile Picture</label>
-                  <div className="flex items-center gap-4">
-                    {tempUser.profileImage ? (
-                      <img
-                        src={tempUser.profileImage}
-                        alt="Preview"
-                        className="w-16 h-16 rounded-full object-cover ring-2 ring-indigo-500/30"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-slate-700 border-2 border-dashed border-slate-600 flex items-center justify-center">
-                        <FiUser className="w-8 h-8 text-slate-500" />
-                      </div>
-                    )}
-                    <label className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2">
-                      <FiImage className="w-4 h-4" />
-                      Choose File
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleImageUpload(e, false)}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                  {tempUser.profileImage && (
-                    <button
-                      type="button"
-                      onClick={() => removeImage(0, false)}
-                      className="mt-2 text-red-400 hover:text-red-300 text-sm flex items-center gap-1"
-                    >
-                      <FiTrash2 className="w-3 h-3" />
-                      Remove Image
-                    </button>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Name</label>
-                  <input
-                    type="text"
-                    value={tempUser.name || ''}
-                    onChange={(e) => handleInputChange(e, 'name')}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Username</label>
-                  <input
-                    type="text"
-                    value={tempUser.username || ''}
-                    onChange={(e) => handleInputChange(e, 'username')}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Bio</label>
-                  <textarea
-                    value={tempUser.bio || ''}
-                    onChange={(e) => handleInputChange(e, 'bio')}
-                    rows="3"
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all resize-none"
-                  />
-                </div>
-
-                {/* Resume Upload Section */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Resume (PDF/DOC)</label>
-                  <div className="flex items-center gap-4">
-                    {tempUser.resume ? (
-                      <div className="flex items-center gap-3 bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-600/50">
-                        <FiFileText className="w-5 h-5 text-indigo-400" />
-                        <a href={tempUser.resume} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline max-w-[150px] truncate block">
-                          {tempUser.resumeName || "View Resume"}
-                        </a>
-                        <button
-                          type="button"
-                          onClick={removeResume}
-                          className="text-red-400 hover:text-red-300 ml-2"
-                        >
-                          <FiX className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2 border border-slate-600 border-dashed w-full justify-center">
-                        {isUploading ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiPlus className="w-4 h-4" />}
-                        Upload Resume
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleResumeUpload}
-                          className="hidden"
-                          disabled={isUploading}
-                        />
-                      </label>
-                    )}
-                  </div>
-                </div>
-
-                {/* Professional Fields */}
-                <div className="pt-4 border-t border-slate-700/50">
-                  <h3 className="text-lg font-bold text-white mb-4">Professional Profile</h3>
-
-                  {/* Summary */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Professional Summary</label>
-                    <textarea
-                      value={tempUser.profile || ''}
-                      onChange={(e) => handleInputChange(e, 'profile')}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-slate-500 resize-none"
-                      placeholder="Summarize your professional experience..."
-                      rows="4"
-                    />
-                  </div>
-
-                  {/* Skills */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Skills (Comma separated)</label>
-                    <input
-                      type="text"
-                      defaultValue={tempUser.skills?.join(', ') || ''}
-                      onBlur={handleSkillsChange}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-slate-500"
-                      placeholder="e.g. React, Node.js, Design"
-                    />
-                  </div>
-
-                  {/* Education */}
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-sm font-medium text-slate-300">Education</label>
-                      <button onClick={handleAddEducation} type="button" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                        <FiPlus /> Add
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {tempUser.education?.map((edu, idx) => (
-                        <div key={idx} className="p-3 bg-slate-700/30 rounded-xl border border-slate-700/50 relative group">
-                          <button
-                            onClick={() => handleRemoveEducation(idx)}
-                            className="absolute top-2 right-2  text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
-                            <input
-                              type="text"
-                              value={edu.institution}
-                              onChange={(e) => handleEducationChange(idx, 'institution', e.target.value)}
-                              placeholder="Institution"
-                              className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
-                            />
-                            <input
-                              type="text"
-                              value={edu.degree}
-                              onChange={(e) => handleEducationChange(idx, 'degree', e.target.value)}
-                              placeholder="Degree"
-                              className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <input
-                              type="date"
-                              value={edu.startDate ? new Date(edu.startDate).toISOString().split('T')[0] : ''}
-                              onChange={(e) => handleEducationChange(idx, 'startDate', e.target.value)}
-                              placeholder="Start Date"
-                              className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
-                            />
-                            <div className="flex flex-col">
-                              <input
-                                type="date"
-                                value={edu.endDate ? new Date(edu.endDate).toISOString().split('T')[0] : ''}
-                                onChange={(e) => handleEducationChange(idx, 'endDate', e.target.value)}
-                                placeholder="End Date"
-                                className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white disabled:opacity-50"
-                                disabled={edu.currentlyStudying}
-                              />
-                              <label className="flex items-center gap-2 mt-2 text-xs text-slate-400 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={edu.currentlyStudying || false}
-                                  onChange={(e) => {
-                                    handleEducationChange(idx, 'currentlyStudying', e.target.checked);
-                                    if (e.target.checked) handleEducationChange(idx, 'endDate', '');
-                                  }}
-                                  className="rounded bg-slate-700 border-slate-600 text-indigo-500 focus:ring-0 w-3 h-3"
-                                />
-                                Currently studying
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Links */}
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-sm font-medium text-slate-300">Links</label>
-                      <button onClick={handleAddLink} type="button" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                        <FiPlus /> Add
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {tempUser.links?.map((link, idx) => (
-                        <div key={idx} className="flex gap-2 items-center">
-                          <input
-                            type="text"
-                            value={link.label}
-                            onChange={(e) => handleLinkChange(idx, 'label', e.target.value)}
-                            placeholder="Label (e.g. Portfolio)"
-                            className="w-1/3 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
-                          />
-                          <input
-                            type="text"
-                            value={link.url}
-                            onChange={(e) => handleLinkChange(idx, 'url', e.target.value)}
-                            placeholder="URL"
-                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
-                          />
-                          <button
-                            onClick={() => handleRemoveLink(idx)}
-                            className="text-slate-500 hover:text-red-400"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={closeEditProfileModal}
-                  className="px-5 py-2.5 text-slate-300 hover:bg-slate-700/50 rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleProfileUpdate}
-                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          />
         )}
       </AnimatePresence>
 
-      {/* Edit Posts Modal */}
-      <AnimatePresence>
-        {isEditPostsModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onClick={closeEditPostsModal}
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex w-20 flex-col items-center py-6 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
+          <FaWhatsapp className="w-7 h-7 text-white" />
+        </div>
+
+        <div className="flex flex-col gap-3 flex-1">
+          <button
+            onClick={() => router.push('/messages')}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex justify-between items-center mb-6 sticky top-0 bg-slate-800 pb-4 border-b border-slate-700/50">
-                <h2 className="text-2xl font-bold text-white">Manage Posts</h2>
-                <button onClick={closeEditPostsModal} className="text-slate-400 hover:text-white transition-colors">
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
+            <FiMessageSquare className="w-6 h-6" />
+          </button>
 
-              {/* Add New Post Form */}
-              <div className="mb-6 p-5 bg-slate-700/30 border border-slate-600/50 rounded-xl">
-                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                  <FiPlus className="w-5 h-5 text-indigo-400" />
-                  Add New Post
-                </h3>
-                <textarea
-                  value={tempPost.caption}
-                  onChange={handleCaptionChange}
-                  placeholder="Write a caption..."
-                  rows="3"
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none mb-3"
-                />
+          <button
+            onClick={() => router.push('/messages')}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiUserPlus className="w-6 h-6" />
+          </button>
 
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Post Type</label>
-                  <select
-                    value={tempPost.type || 'feed'}
-                    onChange={(e) => setTempPost({ ...tempPost, type: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
-                  >
-                    <option value="feed">Normal Feed</option>
-                    <option value="job">Job Post / Service Request</option>
-                  </select>
-                </div>
+          <button
+            onClick={() => router.push('/feeds')}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiBookOpen className="w-6 h-6" />
+          </button>
+        </div>
 
-                <div className="mb-3">
-                  <label className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2">
-                    <FiImage className="w-4 h-4" />
-                    Add Images
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => handleImageUpload(e, true)}
-                      className="hidden"
+        <div className="flex flex-col gap-3">
+          <button
+            className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all transform hover:scale-105"
+          >
+            <FiUser className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => setShowNotifications(true)}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105 relative"
+          >
+            <FiBell className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={handleLogout}
+            className="p-3.5 rounded-2xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all transform hover:scale-105"
+          >
+            <FiLogOut className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Sidebar */}
+      <motion.div
+        initial={false}
+        animate={{ x: sidebarOpen ? 0 : '-100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="lg:hidden fixed top-0 left-0 h-full w-20 flex flex-col items-center py-6 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50 z-50"
+      >
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
+          <FaWhatsapp className="w-7 h-7 text-white" />
+        </div>
+
+        <div className="flex flex-col gap-3 flex-1 mt-20 lg:mt-0">
+          <button
+            onClick={() => { router.push('/messages'); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiMessageSquare className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => { router.push('/messages'); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiUserPlus className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => { router.push('/feeds'); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiBookOpen className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all transform hover:scale-105"
+          >
+            <FiUser className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => { setShowNotifications(true); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105 relative"
+          >
+            <FiBell className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={handleLogout}
+            className="p-3.5 rounded-2xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all transform hover:scale-105"
+          >
+            <FiLogOut className="w-6 h-6" />
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto mt-16 lg:mt-0">
+        <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
+          {/* Profile Header */}
+          {/* Profile Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative overflow-hidden bg-slate-900/40 backdrop-blur-2xl border border-slate-800/50 rounded-3xl shadow-2xl p-6 md:p-10 mb-8"
+          >
+            {/* Background Decorative Gradient */}
+            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full pointer-events-none" />
+
+            <div className="relative flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
+
+              {/* --- AVATAR SECTION --- */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="relative flex-shrink-0"
+              >
+                <div className="p-1 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500">
+                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-900 overflow-hidden bg-slate-800">
+                    <img
+                      src={user.profileImage || 'https://via.placeholder.com/150'}
+                      alt={user.name}
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                     />
-                  </label>
+                  </div>
                 </div>
-                {tempPost.images.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {tempPost.images.map((img, idx) => (
-                      <div key={idx} className="relative group">
-                        <img src={getPreviewUrl(img)} alt={`Preview ${idx}`} className="w-20 h-20 object-cover rounded-lg" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(idx, true)}
-                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <FiX className="w-3 h-3" />
-                        </button>
+                <button
+                  onClick={openEditProfileModal}
+                  className="absolute bottom-2 right-2 bg-indigo-600 text-white rounded-full p-2.5 hover:bg-indigo-500 transition-all shadow-xl border-2 border-slate-900 active:scale-95"
+                >
+                  <FiCamera className="w-5 h-5" />
+                </button>
+              </motion.div>
+
+              {/* --- INFO SECTION --- */}
+              <div className="flex-1 flex flex-col items-center md:items-start w-full">
+
+                {/* Top Row: Username & Primary Actions */}
+                <div className="flex flex-col md:flex-row items-center gap-4 mb-6 w-full">
+                  <h2 className="text-2xl md:text-3xl font-light text-white tracking-tight">
+                    @{user.username}
+                  </h2>
+
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <button
+                      onClick={openEditProfileModal}
+                      className="px-5 py-1.5 bg-slate-100 hover:bg-white text-slate-900 text-sm font-semibold rounded-lg transition-all active:scale-95"
+                    >
+                      Edit Profile
+                    </button>
+
+                    {user.resume && (
+                      <button
+                        onClick={() => setIsResumeModalOpen(true)}
+                        className="px-5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg border border-slate-700 transition-all flex items-center gap-2"
+                      >
+                        <FiFileText className="w-4 h-4" />
+                        Resume
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Middle Row: Stats */}
+                <div className="flex items-center justify-around md:justify-start gap-8 md:gap-10 mb-6 w-full md:w-auto py-4 md:py-0 border-y border-slate-800/50 md:border-none">
+                  <div className="flex flex-col md:flex-row items-center gap-1 md:gap-2">
+                    <span className="text-lg font-bold text-white">{posts.length}</span>
+                    <span className="text-slate-400 text-sm md:text-base">posts</span>
+                  </div>
+
+                  <button
+                    onClick={() => { fetchFollowers(); setShowFollowersModal(true); }}
+                    className="flex flex-col md:flex-row items-center gap-1 md:gap-2 group"
+                  >
+                    <span className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
+                      {user.followers?.length || 0}
+                    </span>
+                    <span className="text-slate-400 text-sm md:text-base">followers</span>
+                  </button>
+
+                  <button
+                    onClick={() => { fetchFollowing(); setShowFollowingModal(true); }}
+                    className="flex flex-col md:flex-row items-center gap-1 md:gap-2 group"
+                  >
+                    <span className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
+                      {user.following?.length || 0}
+                    </span>
+                    <span className="text-slate-400 text-sm md:text-base">following</span>
+                  </button>
+                </div>
+
+                {/* Bottom Row: Name & Bio */}
+                <div className="text-center md:text-left mb-8">
+                  <h1 className="text-lg font-bold text-white mb-1">{user.name}</h1>
+                  <p className="text-slate-300 leading-relaxed max-w-lg whitespace-pre-wrap">
+                    {user.bio || 'Digital creator & professional'}
+                  </p>
+                </div>
+
+                {/* Management Row: Action Buttons */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">
+                  <button
+                    onClick={openEditPostsModal}
+                    className="flex-1 md:flex-none px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/10 active:scale-95"
+                  >
+                    <FiPlus className="w-5 h-5" />
+                    Manage Posts
+                  </button>
+
+                  <button
+                    onClick={() => setShowStoryUploader(true)}
+                    className="flex-1 md:flex-none px-6 py-2.5 bg-gradient-to-r from-pink-600 to-rose-500 hover:opacity-90 text-white rounded-xl transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-rose-500/10 active:scale-95"
+                  >
+                    <FiPlus className="w-5 h-5" />
+                    Add Story
+                  </button>
+
+                  <button
+                    onClick={() => setShowStoryManager(true)}
+                    className="px-6 py-2.5 bg-slate-800/50 hover:bg-slate-800 text-white rounded-xl transition-all font-medium border border-slate-700 flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    Stories
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Professional Profile Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/50 rounded-3xl p-6 md:p-8 mb-8"
+          >
+            <div className="flex items-center gap-2 mb-6">
+              <FiBriefcase className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-xl font-bold text-white">Professional Profile</h2>
+            </div>
+
+            <div className="space-y-8">
+              {/* Summary */}
+              {user.profile && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2">About</h3>
+                  <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">{user.profile}</p>
+                </div>
+              )}
+
+              {/* Skills */}
+              {user.skills && user.skills.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Skills</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {user.skills.map((skill, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-lg text-sm">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Education */}
+              {user.education && user.education.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">Education</h3>
+                  <div className="space-y-4">
+                    {user.education.map((edu, idx) => (
+                      <div key={idx} className="flex gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
+                          <FiBookOpen className="w-5 h-5 text-slate-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium">{edu.institution}</h4>
+                          <p className="text-slate-400 text-sm">{edu.degree}</p>
+                          <p className="text-slate-500 text-xs mt-1">
+                            {edu.startDate && !isNaN(new Date(edu.startDate)) ? new Date(edu.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : ''}
+                            {' - '}
+                            {edu.currentlyStudying ? 'Present' : (edu.endDate && !isNaN(new Date(edu.endDate)) ? new Date(edu.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : '')}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
-                )}
-                <button
-                  onClick={handleAddPost}
-                  disabled={isUploading}
-                  className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-500 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg inline-flex items-center gap-2"
-                >
-                  {isUploading ? <FiLoader className="animate-spin w-4 h-4" /> : <FiPlus className="w-4 h-4" />}
-                  Add Post
-                </button>
-              </div>
+                </div>
+              )}
 
-              {/* Edit Existing Post Form */}
-              {selectedPostForEdit && (
+              {/* Links */}
+              {user.links && user.links.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Links</h3>
+                  <div className="flex flex-wrap gap-4">
+                    {user.links.map((link, idx) => (
+                      <a
+                        key={idx}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        <FiLink className="w-4 h-4" />
+                        <span className="underline decoration-indigo-500/30">{link.label}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Posts Grid Header */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center gap-2 mb-4 px-2"
+          >
+            <FiGrid className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-xl font-bold text-white">Posts</h2>
+          </motion.div>
+
+          {/* Posts Grid */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            <AnimatePresence>
+              {posts.length === 0 ? (
                 <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 p-5 bg-indigo-900/20 border border-indigo-500/30 rounded-xl"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="col-span-full flex flex-col items-center justify-center py-16 px-6 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-2xl"
                 >
+                  <div className="w-20 h-20 bg-slate-700/50 rounded-2xl flex items-center justify-center mb-4">
+                    <FiImage className="w-10 h-10 text-slate-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-200 mb-2">No posts yet</h3>
+                  <p className="text-slate-400 text-center mb-6">Share your first moment with your followers</p>
+                  <button
+                    onClick={openEditPostsModal}
+                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg shadow-indigo-500/20 inline-flex items-center gap-2"
+                  >
+                    <FiPlus className="w-5 h-5" />
+                    Create Post
+                  </button>
+                </motion.div>
+              ) : (
+                posts.map((post, index) => (
+                  <motion.div
+                    key={post._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="group bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all shadow-lg hover:shadow-indigo-500/10"
+                  >
+                    {post.image && post.image.length > 0 && (
+                      <div className="relative aspect-square overflow-hidden bg-slate-900">
+                        <img
+                          src={post.image[0]}
+                          alt={`Post ${index + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        {post.image.length > 1 && (
+                          <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                            +{post.image.length - 1}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="p-4">
+                      <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption}</p>
+
+                      <div className="flex items-center justify-between text-slate-400 text-sm">
+                        <div className="flex items-center gap-4">
+                          <span className="flex items-center gap-1">
+                            <FiHeart className="w-4 h-4" />
+                            {post.likes?.length || 0}
+                          </span>
+                          <span
+                            className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPost(post);
+                              setCommentModalOpen(true);
+                            }}
+                          >
+                            <FiMessageCircle className="w-4 h-4" />
+                            {post.comments?.length || 0}
+                          </span>
+                        </div>
+                        <span className="flex items-center gap-1 text-xs">
+                          <FiCalendar className="w-3 h-3" />
+                          {new Date(post.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </div>
+
+        {/* Edit Profile Modal */}
+        {showStoryUploader && (
+          <StoryUploader
+            onClose={() => setShowStoryUploader(false)}
+            onUploadSuccess={() => {
+              // Optional: maybe refresh something
+            }}
+          />
+        )}
+
+        {showStoryManager && (
+          <MyStoriesManager onClose={() => setShowStoryManager(false)} />
+        )}
+
+        <AnimatePresence>
+          {isEditProfileModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              onClick={closeEditProfileModal}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white">Edit Profile</h2>
+                  <button onClick={closeEditProfileModal} className="text-slate-400 hover:text-white transition-colors">
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Profile Picture</label>
+                    <div className="flex items-center gap-4">
+                      {tempUser.profileImage ? (
+                        <img
+                          src={tempUser.profileImage}
+                          alt="Preview"
+                          className="w-16 h-16 rounded-full object-cover ring-2 ring-indigo-500/30"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-slate-700 border-2 border-dashed border-slate-600 flex items-center justify-center">
+                          <FiUser className="w-8 h-8 text-slate-500" />
+                        </div>
+                      )}
+                      <label className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2">
+                        <FiImage className="w-4 h-4" />
+                        Choose File
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageUpload(e, false)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {tempUser.profileImage && (
+                      <button
+                        type="button"
+                        onClick={() => removeImage(0, false)}
+                        className="mt-2 text-red-400 hover:text-red-300 text-sm flex items-center gap-1"
+                      >
+                        <FiTrash2 className="w-3 h-3" />
+                        Remove Image
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Name</label>
+                    <input
+                      type="text"
+                      value={tempUser.name || ''}
+                      onChange={(e) => handleInputChange(e, 'name')}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Username</label>
+                    <input
+                      type="text"
+                      value={tempUser.username || ''}
+                      onChange={(e) => handleInputChange(e, 'username')}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Bio</label>
+                    <textarea
+                      value={tempUser.bio || ''}
+                      onChange={(e) => handleInputChange(e, 'bio')}
+                      rows="3"
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Resume Upload Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Resume (PDF/DOC)</label>
+                    <div className="flex items-center gap-4">
+                      {tempUser.resume ? (
+                        <div className="flex items-center gap-3 bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-600/50">
+                          <FiFileText className="w-5 h-5 text-indigo-400" />
+                          <a href={tempUser.resume} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline max-w-[150px] truncate block">
+                            {tempUser.resumeName || "View Resume"}
+                          </a>
+                          <button
+                            type="button"
+                            onClick={removeResume}
+                            className="text-red-400 hover:text-red-300 ml-2"
+                          >
+                            <FiX className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2 border border-slate-600 border-dashed w-full justify-center">
+                          {isUploading ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiPlus className="w-4 h-4" />}
+                          Upload Resume
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={handleResumeUpload}
+                            className="hidden"
+                            disabled={isUploading}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Professional Fields */}
+                  <div className="pt-4 border-t border-slate-700/50">
+                    <h3 className="text-lg font-bold text-white mb-4">Professional Profile</h3>
+
+                    {/* Summary */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Professional Summary</label>
+                      <textarea
+                        value={tempUser.profile || ''}
+                        onChange={(e) => handleInputChange(e, 'profile')}
+                        className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-slate-500 resize-none"
+                        placeholder="Summarize your professional experience..."
+                        rows="4"
+                      />
+                    </div>
+
+                    {/* Skills */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Skills (Comma separated)</label>
+                      <input
+                        type="text"
+                        defaultValue={tempUser.skills?.join(', ') || ''}
+                        onBlur={handleSkillsChange}
+                        className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-slate-500"
+                        placeholder="e.g. React, Node.js, Design"
+                      />
+                    </div>
+
+                    {/* Education */}
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-medium text-slate-300">Education</label>
+                        <button onClick={handleAddEducation} type="button" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                          <FiPlus /> Add
+                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        {tempUser.education?.map((edu, idx) => (
+                          <div key={idx} className="p-3 bg-slate-700/30 rounded-xl border border-slate-700/50 relative group">
+                            <button
+                              onClick={() => handleRemoveEducation(idx)}
+                              className="absolute top-2 right-2  text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                              <input
+                                type="text"
+                                value={edu.institution}
+                                onChange={(e) => handleEducationChange(idx, 'institution', e.target.value)}
+                                placeholder="Institution"
+                                className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                              />
+                              <input
+                                type="text"
+                                value={edu.degree}
+                                onChange={(e) => handleEducationChange(idx, 'degree', e.target.value)}
+                                placeholder="Degree"
+                                className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <input
+                                type="date"
+                                value={edu.startDate ? new Date(edu.startDate).toISOString().split('T')[0] : ''}
+                                onChange={(e) => handleEducationChange(idx, 'startDate', e.target.value)}
+                                placeholder="Start Date"
+                                className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                              />
+                              <div className="flex flex-col">
+                                <input
+                                  type="date"
+                                  value={edu.endDate ? new Date(edu.endDate).toISOString().split('T')[0] : ''}
+                                  onChange={(e) => handleEducationChange(idx, 'endDate', e.target.value)}
+                                  placeholder="End Date"
+                                  className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white disabled:opacity-50"
+                                  disabled={edu.currentlyStudying}
+                                />
+                                <label className="flex items-center gap-2 mt-2 text-xs text-slate-400 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={edu.currentlyStudying || false}
+                                    onChange={(e) => {
+                                      handleEducationChange(idx, 'currentlyStudying', e.target.checked);
+                                      if (e.target.checked) handleEducationChange(idx, 'endDate', '');
+                                    }}
+                                    className="rounded bg-slate-700 border-slate-600 text-indigo-500 focus:ring-0 w-3 h-3"
+                                  />
+                                  Currently studying
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Links */}
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-medium text-slate-300">Links</label>
+                        <button onClick={handleAddLink} type="button" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                          <FiPlus /> Add
+                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        {tempUser.links?.map((link, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              value={link.label}
+                              onChange={(e) => handleLinkChange(idx, 'label', e.target.value)}
+                              placeholder="Label (e.g. Portfolio)"
+                              className="w-1/3 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                            />
+                            <input
+                              type="text"
+                              value={link.url}
+                              onChange={(e) => handleLinkChange(idx, 'url', e.target.value)}
+                              placeholder="URL"
+                              className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white"
+                            />
+                            <button
+                              onClick={() => handleRemoveLink(idx)}
+                              className="text-slate-500 hover:text-red-400"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={closeEditProfileModal}
+                    className="px-5 py-2.5 text-slate-300 hover:bg-slate-700/50 rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleProfileUpdate}
+                    className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Posts Modal */}
+        <AnimatePresence>
+          {isEditPostsModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              onClick={closeEditPostsModal}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex justify-between items-center mb-6 sticky top-0 bg-slate-800 pb-4 border-b border-slate-700/50">
+                  <h2 className="text-2xl font-bold text-white">Manage Posts</h2>
+                  <button onClick={closeEditPostsModal} className="text-slate-400 hover:text-white transition-colors">
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                {/* Add New Post Form */}
+                <div className="mb-6 p-5 bg-slate-700/30 border border-slate-600/50 rounded-xl">
                   <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                    <FiEdit3 className="w-5 h-5 text-indigo-400" />
-                    Edit Post
+                    <FiPlus className="w-5 h-5 text-indigo-400" />
+                    Add New Post
                   </h3>
                   <textarea
-                    value={selectedPostForEdit.caption}
-                    onChange={handleEditCaptionChange}
+                    value={tempPost.caption}
+                    onChange={handleCaptionChange}
                     placeholder="Write a caption..."
                     rows="3"
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none mb-3"
                   />
 
-                  {/* Add Images Button for Edit Mode */}
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Post Type</label>
+                    <select
+                      value={tempPost.type || 'feed'}
+                      onChange={(e) => setTempPost({ ...tempPost, type: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
+                    >
+                      <option value="feed">Normal Feed</option>
+                      <option value="job">Job Post / Service Request</option>
+                    </select>
+                  </div>
+
                   <div className="mb-3">
                     <label className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2">
                       <FiImage className="w-4 h-4" />
@@ -1298,30 +1434,20 @@ export default function ProfilePage() {
                         type="file"
                         accept="image/*"
                         multiple
-                        onChange={(e) => {
-                          const files = e.target.files;
-                          if (files && files.length > 0) {
-                            const newFiles = Array.from(files);
-                            setSelectedPostForEdit(prev => ({
-                              ...prev,
-                              images: [...(prev.images || []), ...newFiles]
-                            }));
-                          }
-                        }}
+                        onChange={(e) => handleImageUpload(e, true)}
                         className="hidden"
                       />
                     </label>
                   </div>
-
-                  {selectedPostForEdit.images && selectedPostForEdit.images.length > 0 && (
+                  {tempPost.images.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {selectedPostForEdit.images.map((img, idx) => (
+                      {tempPost.images.map((img, idx) => (
                         <div key={idx} className="relative group">
                           <img src={getPreviewUrl(img)} alt={`Preview ${idx}`} className="w-20 h-20 object-cover rounded-lg" />
                           <button
                             type="button"
-                            onClick={() => removeImageFromEdit(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-100 transition-opacity" // Changed opacity-0 group-hover:opacity-100 to explicitly visible or handle correctly
+                            onClick={() => removeImage(idx, true)}
+                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <FiX className="w-3 h-3" />
                           </button>
@@ -1329,391 +1455,461 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleUpdatePost(selectedPostForEdit._id)}
-                      disabled={isUploading}
-                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
-                    >
-                      {isUploading && <FiLoader className="animate-spin w-4 h-4" />}
-                      Update Post
-                    </button>
-                    <button
-                      onClick={() => handleDeletePost(selectedPostForEdit._id)}
-                      className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-lg inline-flex items-center gap-2"
-                    >
-                      <FiTrash2 className="w-4 h-4" />
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => setSelectedPostForEdit(null)}
-                      className="px-5 py-2.5 text-slate-300 hover:bg-slate-700/50 rounded-xl transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </motion.div>
-              )}
+                  <button
+                    onClick={handleAddPost}
+                    disabled={isUploading}
+                    className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-500 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg inline-flex items-center gap-2"
+                  >
+                    {isUploading ? <FiLoader className="animate-spin w-4 h-4" /> : <FiPlus className="w-4 h-4" />}
+                    Add Post
+                  </button>
+                </div>
 
-              {/* Existing Posts List */}
-              <div>
-                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                  <FiGrid className="w-5 h-5 text-indigo-400" />
-                  Your Posts ({posts.length})
-                </h3>
-                {posts.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-slate-700/50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                      <FiImage className="w-8 h-8 text-slate-400" />
+                {/* Edit Existing Post Form */}
+                {selectedPostForEdit && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-5 bg-indigo-900/20 border border-indigo-500/30 rounded-xl"
+                  >
+                    <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                      <FiEdit3 className="w-5 h-5 text-indigo-400" />
+                      Edit Post
+                    </h3>
+                    <textarea
+                      value={selectedPostForEdit.caption}
+                      onChange={handleEditCaptionChange}
+                      placeholder="Write a caption..."
+                      rows="3"
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none mb-3"
+                    />
+
+                    {/* Add Images Button for Edit Mode */}
+                    <div className="mb-3">
+                      <label className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2">
+                        <FiImage className="w-4 h-4" />
+                        Add Images
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            if (files && files.length > 0) {
+                              const newFiles = Array.from(files);
+                              setSelectedPostForEdit(prev => ({
+                                ...prev,
+                                images: [...(prev.images || []), ...newFiles]
+                              }));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
                     </div>
-                    <p className="text-slate-400">No posts to manage.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {posts.map((post) => (
-                      <motion.div
-                        key={post._id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="flex justify-between items-center p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl transition-all border border-slate-600/30"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {post.image && post.image.length > 0 && (
-                            <img
-                              src={post.image[0]}
-                              alt="Post thumbnail"
-                              className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-slate-200 truncate">{post.caption || 'No caption'}</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                              {new Date(post.createdAt).toLocaleDateString()}
-                            </p>
+
+                    {selectedPostForEdit.images && selectedPostForEdit.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {selectedPostForEdit.images.map((img, idx) => (
+                          <div key={idx} className="relative group">
+                            <img src={getPreviewUrl(img)} alt={`Preview ${idx}`} className="w-20 h-20 object-cover rounded-lg" />
+                            <button
+                              type="button"
+                              onClick={() => removeImageFromEdit(idx)}
+                              className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-100 transition-opacity" // Changed opacity-0 group-hover:opacity-100 to explicitly visible or handle correctly
+                            >
+                              <FiX className="w-3 h-3" />
+                            </button>
                           </div>
-                        </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <button
-                            onClick={() => openEditPostForm(post)}
-                            className="p-2 text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition-colors"
-                          >
-                            <FiEdit3 className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeletePost(post._id)}
-                            className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
-                          >
-                            <FiTrash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleUpdatePost(selectedPostForEdit._id)}
+                        disabled={isUploading}
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isUploading && <FiLoader className="animate-spin w-4 h-4" />}
+                        Update Post
+                      </button>
+                      <button
+                        onClick={() => handleDeletePost(selectedPostForEdit._id)}
+                        className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-lg inline-flex items-center gap-2"
+                      >
+                        <FiTrash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => setSelectedPostForEdit(null)}
+                        className="px-5 py-2.5 text-slate-300 hover:bg-slate-700/50 rounded-xl transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </motion.div>
                 )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Followers Modal */}
-      <AnimatePresence>
-        {showFollowersModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onClick={() => setShowFollowersModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Followers</h2>
-                <button
-                  onClick={() => setShowFollowersModal(false)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
 
-              {loadingFollowers ? (
-                <div className="flex justify-center py-10">
-                  <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-                </div>
-              ) : followersList.length === 0 ? (
-                <p className="text-slate-400 text-center py-6">No followers yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {followersList.map((follower) => (
-                    <div key={follower._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                          {follower.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-slate-200">{follower.name}</p>
-                          <p className="text-slate-400 text-sm">@{follower.username}</p>
-                        </div>
+                {/* Existing Posts List */}
+                <div>
+                  <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                    <FiGrid className="w-5 h-5 text-indigo-400" />
+                    Your Posts ({posts.length})
+                  </h3>
+                  {posts.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-slate-700/50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <FiImage className="w-8 h-8 text-slate-400" />
                       </div>
-                      {session?.user?.id !== follower._id && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFollowInModal(follower._id, follower.isFollowing, 'followers');
-                          }}
-                          className={`text-xs px-3 py-1.5 rounded-lg ${follower.isFollowing
-                            ? 'bg-gray-600 text-white'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-500'
-                            }`}
-                        >
-                          {follower.isFollowing ? 'Following' : 'Follow'}
-                        </button>
-                      )}
+                      <p className="text-slate-400">No posts to manage.</p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Following Modal */}
-      <AnimatePresence>
-        {showFollowingModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onClick={() => setShowFollowingModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Following</h2>
-                <button
-                  onClick={() => setShowFollowingModal(false)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
-
-              {loadingFollowing ? (
-                <div className="flex justify-center py-10">
-                  <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-                </div>
-              ) : followingList.length === 0 ? (
-                <p className="text-slate-400 text-center py-6">Not following anyone.</p>
-              ) : (
-                <div className="space-y-3">
-                  {followingList.map((following) => (
-                    <div key={following._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                          {following.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-slate-200">{following.name}</p>
-                          <p className="text-slate-400 text-sm">@{following.username}</p>
-                        </div>
-                      </div>
-                      {session?.user?.id !== following._id && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFollowInModal(following._id, following.isFollowing, 'following');
-                          }}
-                          className={`text-xs px-3 py-1.5 rounded-lg ${following.isFollowing
-                            ? 'bg-gray-600 text-white'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-500'
-                            }`}
+                  ) : (
+                    <div className="space-y-2">
+                      {posts.map((post) => (
+                        <motion.div
+                          key={post._id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="flex justify-between items-center p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl transition-all border border-slate-600/30"
                         >
-                          {following.isFollowing ? 'Following' : 'Follow'}
-                        </button>
-                      )}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {post.image && post.image.length > 0 && (
+                              <img
+                                src={post.image[0]}
+                                alt="Post thumbnail"
+                                className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-slate-200 truncate">{post.caption || 'No caption'}</p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                {new Date(post.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => openEditPostForm(post)}
+                              className="p-2 text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition-colors"
+                            >
+                              <FiEdit3 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePost(post._id)}
+                              className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                            >
+                              <FiTrash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Comment Modal */}
-      <AnimatePresence>
-        {commentModalOpen && selectedPost && (
-          <>
-            {/* Backdrop */}
+          )}
+        </AnimatePresence>
+        {/* Followers Modal */}
+        <AnimatePresence>
+          {showFollowersModal && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setCommentModalOpen(false)}
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-            />
-
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}
-              className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl overflow-hidden"
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              onClick={() => setShowFollowersModal(false)}
             >
-              {/* Header */}
-              <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2">
-                  <FiMessageCircle className="w-5 h-5 text-indigo-400" />
-                  Comments ({selectedPost.comments?.length || 0})
-                </h2>
-                <button
-                  onClick={() => setCommentModalOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-700/50 hover:text-slate-300"
-                >
-                  <FiX className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Comments List */}
-              <div className="max-h-80 overflow-y-auto custom-scrollbar p-4">
-                {selectedPost.comments?.length === 0 ? (
-                  <p className="text-slate-500 text-center py-4">No comments yet.</p>
-                ) : (
-                  selectedPost.comments.map((comment, idx) => (
-                    <motion.div
-                      key={comment._id || idx}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.03 }}
-                      className="flex gap-3 mb-4 last:mb-0"
-                    >
-                      {comment.user?.profileImage ? (
-                        <img
-                          src={comment.user.profileImage}
-                          alt={comment.user.name}
-                          className="w-9 h-9 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
-                          {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm">
-                          <span className="font-semibold text-slate-200">
-                            {comment.user?.name || 'Anonymous'}
-                          </span>{' '}
-                          <span className="text-slate-400">{comment.text}</span>
-                        </p>
-                        <p className="text-xs text-slate-600 mt-1">
-                          {new Date(comment.createdAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-
-              {/* Add Comment Input */}
-              <div className="p-4 border-t border-slate-700/50">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="flex-1 bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isSubmitting && newComment.trim()) {
-                        handleAddComment();
-                      }
-                    }}
-                  />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white">Followers</h2>
                   <button
-                    onClick={handleAddComment}
-                    disabled={!newComment.trim() || isSubmitting}
-                    className={`px-4 rounded-xl font-medium transition-colors ${newComment.trim() && !isSubmitting
-                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                      : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                      }`}
+                    onClick={() => setShowFollowersModal(false)}
+                    className="text-slate-400 hover:text-white"
                   >
-                    {isSubmitting ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : 'Post'}
+                    <FiX className="w-6 h-6" />
                   </button>
                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
-      {/* ✅ NEW: Resume Preview Modal */}
-      <AnimatePresence>
-        {isResumeModalOpen && user?.resume && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
-            onClick={() => setIsResumeModalOpen(false)}
-          >
+                {loadingFollowers ? (
+                  <div className="flex justify-center py-10">
+                    <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                  </div>
+                ) : followersList.length === 0 ? (
+                  <p className="text-slate-400 text-center py-6">No followers yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {followersList.map((follower) => (
+                      <div key={follower._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                            {follower.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-slate-200">{follower.name}</p>
+                            <p className="text-slate-400 text-sm">@{follower.username}</p>
+                          </div>
+                        </div>
+                        {session?.user?.id !== follower._id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFollowInModal(follower._id, follower.isFollowing, 'followers');
+                            }}
+                            className={`text-xs px-3 py-1.5 rounded-lg ${follower.isFollowing
+                              ? 'bg-gray-600 text-white'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                              }`}
+                          >
+                            {follower.isFollowing ? 'Following' : 'Follow'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Following Modal */}
+        <AnimatePresence>
+          {showFollowingModal && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              onClick={() => setShowFollowingModal(false)}
             >
-              <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/50 rounded-t-2xl">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <FiFileText className="w-5 h-5 text-indigo-400" />
-                  {user.resumeName || "Resume"}
-                </h2>
-                <button
-                  onClick={() => setIsResumeModalOpen(false)}
-                  className="p-2 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-colors"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white">Following</h2>
+                  <button
+                    onClick={() => setShowFollowingModal(false)}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
 
-              <div className="bg-slate-800 px-4 py-2 flex justify-end">
-                <a
-                  href={user.resume}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 hover:underline"
-                >
-                  <FiFileText className="w-4 h-4" /> Open Original File
-                </a>
-              </div>
-              <div className="flex-1 bg-slate-800 p-1 relative overflow-hidden">
-                <iframe
-                  src={`https://docs.google.com/gview?url=${encodeURIComponent(user.resume)}&embedded=true`}
-                  className="w-full h-full rounded-b-xl bg-white"
-                  title="Resume Preview"
-                  style={{ minHeight: '500px' }}
-                />
-              </div>
+                {loadingFollowing ? (
+                  <div className="flex justify-center py-10">
+                    <div className="w-6 h-6 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                  </div>
+                ) : followingList.length === 0 ? (
+                  <p className="text-slate-400 text-center py-6">Not following anyone.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {followingList.map((following) => (
+                      <div key={following._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                            {following.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-slate-200">{following.name}</p>
+                            <p className="text-slate-400 text-sm">@{following.username}</p>
+                          </div>
+                        </div>
+                        {session?.user?.id !== following._id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFollowInModal(following._id, following.isFollowing, 'following');
+                            }}
+                            className={`text-xs px-3 py-1.5 rounded-lg ${following.isFollowing
+                              ? 'bg-gray-600 text-white'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                              }`}
+                          >
+                            {following.isFollowing ? 'Following' : 'Follow'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+        {/* Comment Modal */}
+        <AnimatePresence>
+          {commentModalOpen && selectedPost && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setCommentModalOpen(false)}
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              />
+
+              {/* Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl overflow-hidden"
+              >
+                {/* Header */}
+                <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+                    <FiMessageCircle className="w-5 h-5 text-indigo-400" />
+                    Comments ({selectedPost.comments?.length || 0})
+                  </h2>
+                  <button
+                    onClick={() => setCommentModalOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-700/50 hover:text-slate-300"
+                  >
+                    <FiX className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Comments List */}
+                <div className="max-h-80 overflow-y-auto custom-scrollbar p-4">
+                  {selectedPost.comments?.length === 0 ? (
+                    <p className="text-slate-500 text-center py-4">No comments yet.</p>
+                  ) : (
+                    selectedPost.comments.map((comment, idx) => (
+                      <motion.div
+                        key={comment._id || idx}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.03 }}
+                        className="flex gap-3 mb-4 last:mb-0"
+                      >
+                        {comment.user?.profileImage ? (
+                          <img
+                            src={comment.user.profileImage}
+                            alt={comment.user.name}
+                            className="w-9 h-9 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+                            {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <p className="text-sm">
+                            <span className="font-semibold text-slate-200">
+                              {comment.user?.name || 'Anonymous'}
+                            </span>{' '}
+                            <span className="text-slate-400">{comment.text}</span>
+                          </p>
+                          <p className="text-xs text-slate-600 mt-1">
+                            {new Date(comment.createdAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+
+                {/* Add Comment Input */}
+                <div className="p-4 border-t border-slate-700/50">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Write a comment..."
+                      className="flex-1 bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !isSubmitting && newComment.trim()) {
+                          handleAddComment();
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim() || isSubmitting}
+                      className={`px-4 rounded-xl font-medium transition-colors ${newComment.trim() && !isSubmitting
+                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                        : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                        }`}
+                    >
+                      {isSubmitting ? <FiRefreshCw className="w-4 h-4 animate-spin" /> : 'Post'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* ✅ NEW: Resume Preview Modal */}
+        <AnimatePresence>
+          {isResumeModalOpen && user?.resume && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+              onClick={() => setIsResumeModalOpen(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col"
+              >
+                <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/50 rounded-t-2xl">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <FiFileText className="w-5 h-5 text-indigo-400" />
+                    {user.resumeName || "Resume"}
+                  </h2>
+                  <button
+                    onClick={() => setIsResumeModalOpen(false)}
+                    className="p-2 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-colors"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="bg-slate-800 px-4 py-2 flex justify-end">
+                  <a
+                    href={user.resume}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 hover:underline"
+                  >
+                    <FiFileText className="w-4 h-4" /> Open Original File
+                  </a>
+                </div>
+                <div className="flex-1 bg-slate-800 p-1 relative overflow-hidden">
+                  <iframe
+                    src={`https://docs.google.com/gview?url=${encodeURIComponent(user.resume)}&embedded=true`}
+                    className="w-full h-full rounded-b-xl bg-white"
+                    title="Resume Preview"
+                    style={{ minHeight: '500px' }}
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

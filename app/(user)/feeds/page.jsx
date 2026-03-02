@@ -651,7 +651,9 @@ export default function Feeds() {
           <div className="max-w-2xl mx-auto pb-20 lg:pb-0">
             <div className="mb-8 animate-fade-in">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-gray-300 to-gray-500 bg-clip-text text-transparent mb-2">
-                🇼​🇭​🇦​🇹​’🇸​ 🇳​🇪​🇼​ 🇹​🇴​🇩​🇦​🇾​?              </h1>
+                <span className="hidden md:inline">🇼​🇭​🇦​🇹​'🇸​ 🇳​🇪​🇼​ 🇹​🇴​🇩​🇦​🇾​?</span>
+                <span className="md:hidden">Explore</span>
+              </h1>
               <div className="h-1 w-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
             </div>
 
