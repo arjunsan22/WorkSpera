@@ -10,6 +10,7 @@ import { FaWhatsapp } from 'react-icons/fa';
 import Link from 'next/link';
 import StoryUploader from "@/app/components/stories/StoryUploader";
 import MyStoriesManager from "@/app/components/stories/MyStoriesManager";
+import ChatBot from "@/app/components/user/ChatBot";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -1910,6 +1911,9 @@ export default function ProfilePage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* AI Chatbot */}
+      <ChatBot />
     </div>
   );
 }
