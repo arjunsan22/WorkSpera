@@ -10,6 +10,15 @@ export async function GET(request) {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id || null;
 
+    // Fetch user's saved posts for isSaved flag
+    let savedPostIds = new Set();
+    if (userId) {
+      const currentUser = await User.findById(userId).select("savedPosts").lean();
+      if (currentUser?.savedPosts) {
+        savedPostIds = new Set(currentUser.savedPosts.map(id => String(id)));
+      }
+    }
+
     // Fetch posts with top-level user and comment users populated
     let posts = await Post.find({ visibility: "public" })
       .populate("user", "name username profileImage")
@@ -60,6 +69,7 @@ export async function GET(request) {
         likeCount: likeIds.length,
         commentCount: updatedComments.length,
         isLiked: userId ? likeIds.includes(String(userId)) : false,
+        isSaved: savedPostIds.has(String(post._id)),
       };
     });
 

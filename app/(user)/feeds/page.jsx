@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHeart, FaRegHeart, FaComment, FaShare, FaTimes, FaWhatsapp } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaComment, FaShare, FaTimes, FaWhatsapp, FaBookmark, FaRegBookmark, FaCopy, FaExternalLinkAlt } from 'react-icons/fa';
 import Link from "next/link";
 import { FiArrowLeft, FiUserPlus, FiMenu, FiUser, FiMessageSquare, FiBookOpen, FiBell, FiLogOut, FiRefreshCw, FiX } from "react-icons/fi";
 import StoryFeed from "@/app/components/stories/StoryFeed";
@@ -209,6 +209,7 @@ export default function Feeds() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [shareMenuPostId, setShareMenuPostId] = useState(null);
 
   useEffect(() => {
     fetchPosts();
@@ -423,8 +424,50 @@ export default function Feeds() {
   };
 
   const handleShare = (postId) => {
-    navigator.clipboard.writeText(`${window.location.origin}/feeds/${postId}`);
+    setShareMenuPostId(shareMenuPostId === postId ? null : postId);
+  };
+
+  const handleCopyLink = (postId) => {
+    const postUrl = `${window.location.origin}/feeds?post=${postId}`;
+    navigator.clipboard.writeText(postUrl);
     showToast('Post link copied to clipboard!');
+    setShareMenuPostId(null);
+  };
+
+  const handleWhatsAppShare = (post) => {
+    const postUrl = `${window.location.origin}/feeds?post=${post._id}`;
+    const text = `Check out this post by ${post.user?.name || 'someone'} on WorkSpera: ${postUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    setShareMenuPostId(null);
+  };
+
+  const handleSavePost = async (postId) => {
+    if (!session) {
+      showToast('Please login to save posts', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/user/posts/${postId}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedPosts = posts.map(post => {
+          if (post._id === postId) {
+            return { ...post, isSaved: data.isSaved };
+          }
+          return post;
+        });
+        setPosts(updatedPosts);
+        showToast(data.isSaved ? 'Post saved!' : 'Post unsaved');
+      }
+    } catch (error) {
+      console.error('Error saving post:', error);
+      showToast('Failed to save post', 'error');
+    }
   };
 
   // No early return for loading, we handle it inside the layout
@@ -801,14 +844,45 @@ export default function Feeds() {
                           </button>
                         </div>
 
-                        {/* Share Button */}
-                        <button
-                          onClick={() => handleShare(post._id)}
-                          className="flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition-all active:scale-125"
-                        >
-                          <FaShare className="text-xl" />
-                          <span className="hidden sm:inline text-sm font-bold">Share</span>
-                        </button>
+                        <div className="flex items-center gap-5">
+                          {/* Share Button with Dropdown */}
+                          <div className="relative">
+                            <button
+                              onClick={() => handleShare(post._id)}
+                              className="flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition-all active:scale-125"
+                            >
+                              <FaShare className="text-xl" />
+                            </button>
+
+                            {/* Share Dropdown Menu */}
+                            {shareMenuPostId === post._id && (
+                              <div className="absolute bottom-full right-0 mb-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-scale-in">
+                                <button
+                                  onClick={() => handleCopyLink(post._id)}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-200 hover:bg-slate-700/70 transition-colors"
+                                >
+                                  <FaCopy className="text-sky-400" />
+                                  Copy Link
+                                </button>
+                                <button
+                                  onClick={() => handleWhatsAppShare(post)}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-200 hover:bg-slate-700/70 transition-colors border-t border-slate-700/50"
+                                >
+                                  <FaWhatsapp className="text-green-400" />
+                                  Share via WhatsApp
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Save/Bookmark Button */}
+                          <button
+                            onClick={() => handleSavePost(post._id)}
+                            className={`transition-all active:scale-125 ${post.isSaved ? 'text-amber-400' : 'text-slate-400 hover:text-amber-400'}`}
+                          >
+                            {post.isSaved ? <FaBookmark className="text-xl" /> : <FaRegBookmark className="text-xl" />}
+                          </button>
+                        </div>
                       </div>
 
                       {/* Latest Comment Preview */}

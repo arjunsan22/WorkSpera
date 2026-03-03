@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiFileText, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUserPlus } from 'react-icons/fi';
+import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiFileText, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUserPlus, FiBookmark } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import Link from 'next/link';
 import StoryUploader from "@/app/components/stories/StoryUploader";
@@ -43,6 +43,9 @@ export default function ProfilePage() {
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false); // ✅ NEW
+  const [profileTab, setProfileTab] = useState('posts'); // 'posts' or 'saved'
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
   useEffect(() => {
     if (session?.user?.id) {
       fetchProfileData();
@@ -587,6 +590,34 @@ export default function ProfilePage() {
     }
   };
 
+  const fetchSavedPosts = async () => {
+    setLoadingSaved(true);
+    try {
+      const res = await fetch('/api/user/saved-posts');
+      if (res.ok) {
+        const data = await res.json();
+        setSavedPosts(data.posts || []);
+      }
+    } catch (err) {
+      console.error('Error fetching saved posts:', err);
+    } finally {
+      setLoadingSaved(false);
+    }
+  };
+
+  const handleUnsavePost = async (postId) => {
+    try {
+      const res = await fetch(`/api/user/posts/${postId}/save`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        setSavedPosts(prev => prev.filter(p => p._id !== postId));
+      }
+    } catch (err) {
+      console.error('Error unsaving post:', err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -987,101 +1018,222 @@ export default function ProfilePage() {
             </div>
           </motion.div>
 
-          {/* Posts Grid Header */}
+          {/* Posts Grid Header - Instagram-style Tabs */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="flex items-center gap-2 mb-4 px-2"
+            className="border-t border-slate-800/50 mb-4"
           >
-            <FiGrid className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-xl font-bold text-white">Posts</h2>
+            <div className="flex items-center justify-center gap-12">
+              <button
+                onClick={() => setProfileTab('posts')}
+                className={`flex items-center gap-2 py-4 px-2 border-t-2 transition-all text-sm font-semibold tracking-wider uppercase ${profileTab === 'posts'
+                    ? 'border-white text-white'
+                    : 'border-transparent text-slate-500 hover:text-slate-300'
+                  }`}
+              >
+                <FiGrid className="w-4 h-4" />
+                Posts
+              </button>
+              <button
+                onClick={() => {
+                  setProfileTab('saved');
+                  if (savedPosts.length === 0) fetchSavedPosts();
+                }}
+                className={`flex items-center gap-2 py-4 px-2 border-t-2 transition-all text-sm font-semibold tracking-wider uppercase ${profileTab === 'saved'
+                    ? 'border-white text-white'
+                    : 'border-transparent text-slate-500 hover:text-slate-300'
+                  }`}
+              >
+                <FiBookmark className="w-4 h-4" />
+                Saved
+              </button>
+            </div>
           </motion.div>
 
           {/* Posts Grid */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            <AnimatePresence>
-              {posts.length === 0 ? (
+          {profileTab === 'posts' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            >
+              <AnimatePresence>
+                {posts.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="col-span-full flex flex-col items-center justify-center py-16 px-6 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-2xl"
+                  >
+                    <div className="w-20 h-20 bg-slate-700/50 rounded-2xl flex items-center justify-center mb-4">
+                      <FiImage className="w-10 h-10 text-slate-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-200 mb-2">No posts yet</h3>
+                    <p className="text-slate-400 text-center mb-6">Share your first moment with your followers</p>
+                    <button
+                      onClick={openEditPostsModal}
+                      className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg shadow-indigo-500/20 inline-flex items-center gap-2"
+                    >
+                      <FiPlus className="w-5 h-5" />
+                      Create Post
+                    </button>
+                  </motion.div>
+                ) : (
+                  posts.map((post, index) => (
+                    <motion.div
+                      key={post._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="group bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all shadow-lg hover:shadow-indigo-500/10"
+                    >
+                      {post.image && post.image.length > 0 && (
+                        <div className="relative aspect-square overflow-hidden bg-slate-900">
+                          <img
+                            src={post.image[0]}
+                            alt={`Post ${index + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          {post.image.length > 1 && (
+                            <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                              +{post.image.length - 1}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="p-4">
+                        <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption}</p>
+
+                        <div className="flex items-center justify-between text-slate-400 text-sm">
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1">
+                              <FiHeart className="w-4 h-4" />
+                              {post.likes?.length || 0}
+                            </span>
+                            <span
+                              className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPost(post);
+                                setCommentModalOpen(true);
+                              }}
+                            >
+                              <FiMessageCircle className="w-4 h-4" />
+                              {post.comments?.length || 0}
+                            </span>
+                          </div>
+                          <span className="flex items-center gap-1 text-xs">
+                            <FiCalendar className="w-3 h-3" />
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+
+          {/* Saved Posts Grid */}
+          {profileTab === 'saved' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              {loadingSaved ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="relative w-10 h-10">
+                    <div className="absolute inset-0 rounded-full border-4 border-indigo-500/30"></div>
+                    <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 animate-spin"></div>
+                  </div>
+                </div>
+              ) : savedPosts.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="col-span-full flex flex-col items-center justify-center py-16 px-6 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-2xl"
                 >
                   <div className="w-20 h-20 bg-slate-700/50 rounded-2xl flex items-center justify-center mb-4">
-                    <FiImage className="w-10 h-10 text-slate-400" />
+                    <FiBookmark className="w-10 h-10 text-slate-400" />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-200 mb-2">No posts yet</h3>
-                  <p className="text-slate-400 text-center mb-6">Share your first moment with your followers</p>
-                  <button
-                    onClick={openEditPostsModal}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all shadow-lg shadow-indigo-500/20 inline-flex items-center gap-2"
-                  >
-                    <FiPlus className="w-5 h-5" />
-                    Create Post
-                  </button>
+                  <h3 className="text-xl font-semibold text-slate-200 mb-2">No saved posts</h3>
+                  <p className="text-slate-400 text-center">Posts you save will appear here</p>
                 </motion.div>
               ) : (
-                posts.map((post, index) => (
-                  <motion.div
-                    key={post._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="group bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all shadow-lg hover:shadow-indigo-500/10"
-                  >
-                    {post.image && post.image.length > 0 && (
-                      <div className="relative aspect-square overflow-hidden bg-slate-900">
-                        <img
-                          src={post.image[0]}
-                          alt={`Post ${index + 1}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        {post.image.length > 1 && (
-                          <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
-                            +{post.image.length - 1}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="p-4">
-                      <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption}</p>
-
-                      <div className="flex items-center justify-between text-slate-400 text-sm">
-                        <div className="flex items-center gap-4">
-                          <span className="flex items-center gap-1">
-                            <FiHeart className="w-4 h-4" />
-                            {post.likes?.length || 0}
-                          </span>
-                          <span
-                            className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedPost(post);
-                              setCommentModalOpen(true);
-                            }}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {savedPosts.map((post, index) => (
+                    <motion.div
+                      key={post._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="group relative bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden hover:border-amber-500/50 transition-all shadow-lg hover:shadow-amber-500/10"
+                    >
+                      {post.image && post.image.length > 0 && (
+                        <div className="relative aspect-square overflow-hidden bg-slate-900">
+                          <img
+                            src={post.image[0]}
+                            alt={`Saved post ${index + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          {post.image.length > 1 && (
+                            <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                              +{post.image.length - 1}
+                            </div>
+                          )}
+                          {/* Unsave overlay button */}
+                          <button
+                            onClick={() => handleUnsavePost(post._id)}
+                            className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-amber-400 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+                            title="Unsave post"
                           >
-                            <FiMessageCircle className="w-4 h-4" />
-                            {post.comments?.length || 0}
+                            <FiBookmark className="w-4 h-4 fill-current" />
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="p-4">
+                        {/* Post author */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <img
+                            src={post.user?.profileImage || '/default-avatar.png'}
+                            alt={post.user?.name}
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                          <span className="text-slate-300 text-xs font-semibold">{post.user?.name}</span>
+                        </div>
+                        <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption}</p>
+
+                        <div className="flex items-center justify-between text-slate-400 text-sm">
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1">
+                              <FiHeart className="w-4 h-4" />
+                              {post.likes?.length || 0}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <FiMessageCircle className="w-4 h-4" />
+                              {post.comments?.length || 0}
+                            </span>
+                          </div>
+                          <span className="flex items-center gap-1 text-xs">
+                            <FiCalendar className="w-3 h-3" />
+                            {new Date(post.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <span className="flex items-center gap-1 text-xs">
-                          <FiCalendar className="w-3 h-3" />
-                          {new Date(post.createdAt).toLocaleDateString()}
-                        </span>
                       </div>
-                    </div>
-                  </motion.div>
-                ))
+                    </motion.div>
+                  ))}
+                </div>
               )}
-            </AnimatePresence>
-          </motion.div>
+            </motion.div>
+          )}
         </div>
 
         {/* Edit Profile Modal */}
