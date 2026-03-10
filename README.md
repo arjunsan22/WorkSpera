@@ -1,36 +1,247 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+🚀 WorkSpera – Feature Overview
 
-## Getting Started
+WorkSpera is a modern professional networking platform that blends LinkedIn-style career networking with Instagram-like social interaction to create a powerful collaboration space for professionals.
 
-First, run the development server:
+🌟 Completed Features in WorkSpera
+🔐 Secure Authentication & User Onboarding
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+✨ Seamless Sign Up & Login experience
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+📩 OTP Verification Flow powered by NextAuth
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+🛡️ Secure Route Protection preventing unauthorized access
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+🔑 Authentication-driven access control for protected pages
 
-## Learn More
+🖥️ Modern User Dashboard & Real-Time Presence
 
-To learn more about Next.js, take a look at the following resources:
+📱 Fully Responsive Workspace Layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Sidebar navigation on desktop
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Bottom navigation / hamburger menu on mobile
 
-## Deploy on Vercel
+🟢 Live Activity Status (isOnline)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+🔄 Automatic presence updates when users log in or log out
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+⚡ Smooth transitions across the platform
+
+👤 Powerful Profile & Portfolio Setup
+
+Create a professional digital identity.
+
+🎨 Customizable Profiles
+
+🖼️ Profile Image & Cover Photo
+
+📝 Bio and Professional Summary
+
+🏷️ Skills Tags for better discoverability
+
+🎓 Educational Timeline
+
+📚 Track and display multi-step educational history
+
+📄 Resume Support
+
+📤 Secure upload of PDF / DOC resumes
+
+☁️ Stored safely in storage bucket
+
+🌐 Social Links
+
+🔗 Add custom links to professional profiles
+
+👀 Public Profile Viewing
+
+Safe View Other User experience to explore profiles
+
+📰 Comprehensive Post & Feed System
+
+A dynamic social feed for professional interaction.
+
+🖼️ Multimedia Posts with captions
+
+☁️ External media uploads (Cloudinary-style)
+
+💼 Job / Opportunity Posts with Connect for Work
+
+🔖 Save & Bookmark System (Instagram-like)
+
+🔗 Post Sharing Pipeline
+
+Copy URL
+
+Share directly to WhatsApp
+
+✏️ Edit existing posts
+
+❌ Delete posts easily
+
+❤️ Robust Interactions & Notifications
+
+Engagement and real-time feedback.
+
+👍 Likes System
+
+💬 Comments System
+
+Nested replies
+
+Structured comment threads
+
+🔔 Push Notification System
+
+Background sync every 30 seconds
+
+Tracks:
+
+follows
+
+messages
+
+mentions
+
+🌐 Network Expansion
+
+Discover users
+
+Follow / Following system
+
+💬 Messaging & Video Call Suite (WebRTC + Socket.io)
+🗨️ Real-Time Messaging
+
+Live Socket-powered chat
+
+✍️ Typing indicators
+
+✔️ Read receipts
+
+📞 Video Calling
+
+🎵 Incoming call modal with ringtone
+
+🎥 WebRTC-powered video communication
+
+🔗 ICE protocol implementation
+
+🎤 Camera & audio stream support
+
+🤖 AI Chatbot Integration
+
+Integrated Google Gemini AI
+
+💡 Available across pages via modal
+
+🧠 Helps users with queries and guidance
+
+📸 Interactive Story Engine
+
+📷 Instagram-style Stories
+
+Post images as daily highlights
+
+❤️ Story Like system
+
+📡 API support for story interactions
+
+🚀 Future Features & Improvements
+
+WorkSpera already combines professional networking and social engagement, but these features can take it even further.
+
+💼 1. Dedicated Job Board / Opportunities Hub
+
+Currently jobs are inside posts.
+
+Future Idea
+
+📂 /jobs page for centralized opportunities
+
+🔎 Skill-based job matching
+
+🤝 Hiring & Co-founder discovery
+
+🧠 2. AI Resume Parsing & Smart Profile Creation
+
+Use AI to simplify onboarding.
+
+Future Idea
+
+🤖 Gemini parses uploaded resumes
+
+📝 Auto-fill:
+
+Skills
+
+Bio
+
+Education
+
+⚡ One-click profile creation
+
+📎 3. Messaging Enhancements (Media Sharing)
+
+Current chat supports text.
+
+Future Idea
+
+📷 Image sharing
+
+📁 File attachments
+
+📄 Resume sharing in chat
+
+🎨 Design or project file transfer
+
+📊 4. Rich Post Formats & Polls
+
+Increase community engagement.
+
+Future Idea
+
+🎨 Text posts with colorful backgrounds
+
+📊 Poll-based posts
+
+🗳️ Feed voting system
+
+🛡️ 5. Admin Panel & Moderation System
+
+Essential for community scaling.
+
+Future Idea
+
+👮 Admin dashboard
+
+🚨 Reported content review
+
+🚫 Spam account control
+
+📈 Platform analytics monitoring
+
+📧 6. Email Notification System
+
+Users may miss updates when offline.
+
+Future Idea
+
+📬 Email digests for inactive users
+
+Example:
+
+“You have 3 unread messages waiting on WorkSpera.”
+
+Possible integration with Resend API.
+
+✨ Vision
+
+WorkSpera aims to become a next-generation professional social network where users can:
+
+💼 Build careers
+🤝 Connect with professionals
+📢 Share opportunities
+💬 Communicate instantly
+🤖 Use AI assistance
+
+All inside one unified platform.
