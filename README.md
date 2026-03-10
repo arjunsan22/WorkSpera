@@ -1,6 +1,3 @@
-You can paste this **directly into your GitHub README**. I improved the **formatting, emojis, section headers, and readability** so it looks more professional and attractive. 🚀
-
----
 
 # 🚀 WorkSpera – Feature Overview
 
