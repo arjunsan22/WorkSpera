@@ -183,8 +183,8 @@ export default function UserProfilePage() {
                         <FiMenu className="w-6 h-6" />
                     </button>
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
-                            <FaWhatsapp className="w-5 h-5 text-white" />
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 flex items-center justify-center">
+                            <img src="/favicon.ico" alt="WorkSpera" className="w-5 h-5 object-contain drop-shadow-sm" />
                         </div>
                         <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                             WorkSpera
@@ -214,8 +214,8 @@ export default function UserProfilePage() {
 
             {/* Desktop Sidebar */}
             <div className="hidden lg:flex w-20 flex-col items-center py-6 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
-                    <FaWhatsapp className="w-7 h-7 text-white" />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
+                    <img src="/favicon.ico" alt="WorkSpera" className="w-7 h-7 object-contain drop-shadow-md" />
                 </div>
 
                 <div className="flex flex-col gap-3 flex-1">
@@ -277,7 +277,7 @@ export default function UserProfilePage() {
                 className="lg:hidden fixed top-0 left-0 h-full w-20 flex flex-col items-center py-6 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50 z-50"
             >
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
-                    <FaWhatsapp className="w-7 h-7 text-white" />
+                    <img src="/favicon.ico" alt="WorkSpera" className="w-7 h-7 object-contain drop-shadow-md" />
                 </div>
 
                 <div className="flex flex-col gap-3 flex-1 mt-20 lg:mt-0">
