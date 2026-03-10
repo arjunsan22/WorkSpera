@@ -1,242 +1,230 @@
-# 🚀 🇼​🇴​🇷​🇰​🇸​🇵​🇪​🇷​🇦​ – 🇫​🇪​🇦​🇹​🇺​🇷​🇪​ 🇴​🇻​🇪​🇷​🇻​🇮​🇪​🇼​
+You can paste this **directly into your GitHub README**. I improved the **formatting, emojis, section headers, and readability** so it looks more professional and attractive. 🚀
 
-### WorkSpera is a modern professional networking platform that blends LinkedIn-style career networking with Instagram-like social interaction to create a powerful collaboration space for professionals.
+---
 
-🌟 Completed Features in WorkSpera
-🔐 Secure Authentication & User Onboarding
+# 🚀 WorkSpera – Feature Overview
 
-✨ Seamless Sign Up & Login experience
+WorkSpera is a modern professional networking platform that blends **LinkedIn-style career networking** with **Instagram-like social interaction** to create a powerful collaboration space for professionals.
 
-📩 OTP Verification Flow powered by NextAuth
+---
 
-🛡️ Secure Route Protection preventing unauthorized access
+# 🌟 Completed Features in WorkSpera
 
-🔑 Authentication-driven access control for protected pages
+## 🔐 Secure Authentication & User Onboarding
 
-🖥️ Modern User Dashboard & Real-Time Presence
+* ✨ Seamless **Sign Up & Login** experience
+* 📩 **OTP Verification Flow** powered by NextAuth
+* 🛡️ **Secure Route Protection** preventing unauthorized access
+* 🔑 Authentication-driven access control for protected pages
 
-📱 Fully Responsive Workspace Layout
+---
 
-Sidebar navigation on desktop
+## 🖥️ Modern User Dashboard & Real-Time Presence
 
-Bottom navigation / hamburger menu on mobile
+* 📱 **Fully Responsive Workspace Layout**
 
-🟢 Live Activity Status (isOnline)
+  * Sidebar navigation on desktop
+  * Bottom navigation / hamburger menu on mobile
+* 🟢 **Live Activity Status (`isOnline`)**
+* 🔄 Automatic presence updates when users log in or log out
+* ⚡ Smooth transitions across the platform
 
-🔄 Automatic presence updates when users log in or log out
+---
 
-⚡ Smooth transitions across the platform
-
-👤 Powerful Profile & Portfolio Setup
+## 👤 Powerful Profile & Portfolio Setup
 
 Create a professional digital identity.
 
-🎨 Customizable Profiles
+### 🎨 Customizable Profiles
 
-🖼️ Profile Image & Cover Photo
+* 🖼️ Profile Image & Cover Photo
+* 📝 Bio and **Professional Summary**
+* 🏷️ Skills Tags for better discoverability
 
-📝 Bio and Professional Summary
+### 🎓 Educational Timeline
 
-🏷️ Skills Tags for better discoverability
+* 📚 Track and display **multi-step educational history**
 
-🎓 Educational Timeline
+### 📄 Resume Support
 
-📚 Track and display multi-step educational history
+* 📤 Secure upload of **PDF / DOC resumes**
+* ☁️ Stored safely in storage bucket
 
-📄 Resume Support
+### 🌐 Social Links
 
-📤 Secure upload of PDF / DOC resumes
+* 🔗 Add custom links to professional profiles
 
-☁️ Stored safely in storage bucket
+### 👀 Public Profile Viewing
 
-🌐 Social Links
+* Safe **View Other User** experience to explore profiles
 
-🔗 Add custom links to professional profiles
+---
 
-👀 Public Profile Viewing
-
-Safe View Other User experience to explore profiles
-
-📰 Comprehensive Post & Feed System
+## 📰 Comprehensive Post & Feed System
 
 A dynamic social feed for professional interaction.
 
-🖼️ Multimedia Posts with captions
+* 🖼️ **Multimedia Posts** with captions
+* ☁️ External media uploads (Cloudinary-style)
+* 💼 **Job / Opportunity Posts** with *Connect for Work*
+* 🔖 **Save & Bookmark System** (Instagram-like)
+* 🔗 **Post Sharing Pipeline**
 
-☁️ External media uploads (Cloudinary-style)
+  * Copy URL
+  * Share directly to WhatsApp
+* ✏️ Edit existing posts
+* ❌ Delete posts easily
 
-💼 Job / Opportunity Posts with Connect for Work
+---
 
-🔖 Save & Bookmark System (Instagram-like)
-
-🔗 Post Sharing Pipeline
-
-Copy URL
-
-Share directly to WhatsApp
-
-✏️ Edit existing posts
-
-❌ Delete posts easily
-
-❤️ Robust Interactions & Notifications
+## ❤️ Robust Interactions & Notifications
 
 Engagement and real-time feedback.
 
-👍 Likes System
+* 👍 **Likes System**
+* 💬 **Comments System**
 
-💬 Comments System
+  * Nested replies
+  * Structured comment threads
+* 🔔 **Push Notification System**
 
-Nested replies
+  * Background sync every **30 seconds**
+  * Tracks:
 
-Structured comment threads
+    * follows
+    * messages
+    * mentions
+* 🌐 **Network Expansion**
 
-🔔 Push Notification System
+  * Discover users
+  * Follow / Following system
 
-Background sync every 30 seconds
+---
 
-Tracks:
+## 💬 Messaging & Video Call Suite (WebRTC + Socket.io)
 
-follows
+### 🗨️ Real-Time Messaging
 
-messages
+* Live **Socket-powered chat**
+* ✍️ Typing indicators
+* ✔️ Read receipts
 
-mentions
+### 📞 Video Calling
 
-🌐 Network Expansion
+* 🎵 Incoming call modal with ringtone
+* 🎥 WebRTC-powered video communication
+* 🔗 ICE protocol implementation
+* 🎤 Camera & audio stream support
 
-Discover users
+---
 
-Follow / Following system
+## 🤖 AI Chatbot Integration
 
-💬 Messaging & Video Call Suite (WebRTC + Socket.io)
-🗨️ Real-Time Messaging
+* Integrated **Google Gemini AI**
+* 💡 Available across pages via modal
+* 🧠 Helps users with queries and guidance
 
-Live Socket-powered chat
+---
 
-✍️ Typing indicators
+## 📸 Interactive Story Engine
 
-✔️ Read receipts
+* 📷 Instagram-style **Stories**
+* Post images as **daily highlights**
+* ❤️ Story Like system
+* 📡 API support for story interactions
 
-📞 Video Calling
+---
 
-🎵 Incoming call modal with ringtone
+# 🚀 Future Features & Improvements
 
-🎥 WebRTC-powered video communication
+WorkSpera already combines **professional networking** and **social engagement**, but these features can take it even further.
 
-🔗 ICE protocol implementation
+---
 
-🎤 Camera & audio stream support
-
-🤖 AI Chatbot Integration
-
-Integrated Google Gemini AI
-
-💡 Available across pages via modal
-
-🧠 Helps users with queries and guidance
-
-📸 Interactive Story Engine
-
-📷 Instagram-style Stories
-
-Post images as daily highlights
-
-❤️ Story Like system
-
-📡 API support for story interactions
-
-🚀 Future Features & Improvements
-
-WorkSpera already combines professional networking and social engagement, but these features can take it even further.
-
-💼 1. Dedicated Job Board / Opportunities Hub
+## 💼 1. Dedicated Job Board / Opportunities Hub
 
 Currently jobs are inside posts.
 
-Future Idea
+**Future Idea**
 
-📂 /jobs page for centralized opportunities
+* 📂 `/jobs` page for centralized opportunities
+* 🔎 Skill-based job matching
+* 🤝 Hiring & Co-founder discovery
 
-🔎 Skill-based job matching
+---
 
-🤝 Hiring & Co-founder discovery
-
-🧠 2. AI Resume Parsing & Smart Profile Creation
+## 🧠 2. AI Resume Parsing & Smart Profile Creation
 
 Use AI to simplify onboarding.
 
-Future Idea
+**Future Idea**
 
-🤖 Gemini parses uploaded resumes
+* 🤖 Gemini parses uploaded resumes
+* 📝 Auto-fill:
 
-📝 Auto-fill:
+  * Skills
+  * Bio
+  * Education
+* ⚡ One-click profile creation
 
-Skills
+---
 
-Bio
-
-Education
-
-⚡ One-click profile creation
-
-📎 3. Messaging Enhancements (Media Sharing)
+## 📎 3. Messaging Enhancements (Media Sharing)
 
 Current chat supports text.
 
-Future Idea
+**Future Idea**
 
-📷 Image sharing
+* 📷 Image sharing
+* 📁 File attachments
+* 📄 Resume sharing in chat
+* 🎨 Design or project file transfer
 
-📁 File attachments
+---
 
-📄 Resume sharing in chat
-
-🎨 Design or project file transfer
-
-📊 4. Rich Post Formats & Polls
+## 📊 4. Rich Post Formats & Polls
 
 Increase community engagement.
 
-Future Idea
+**Future Idea**
 
-🎨 Text posts with colorful backgrounds
+* 🎨 Text posts with colorful backgrounds
+* 📊 Poll-based posts
+* 🗳️ Feed voting system
 
-📊 Poll-based posts
+---
 
-🗳️ Feed voting system
-
-🛡️ 5. Admin Panel & Moderation System
+## 🛡️ 5. Admin Panel & Moderation System
 
 Essential for community scaling.
 
-Future Idea
+**Future Idea**
 
-👮 Admin dashboard
+* 👮 Admin dashboard
+* 🚨 Reported content review
+* 🚫 Spam account control
+* 📈 Platform analytics monitoring
 
-🚨 Reported content review
+---
 
-🚫 Spam account control
-
-📈 Platform analytics monitoring
-
-📧 6. Email Notification System
+## 📧 6. Email Notification System
 
 Users may miss updates when offline.
 
-Future Idea
+**Future Idea**
 
-📬 Email digests for inactive users
+* 📬 Email digests for inactive users
+* Example:
 
-Example:
+  > “You have **3 unread messages** waiting on WorkSpera.”
 
-“You have 3 unread messages waiting on WorkSpera.”
+Possible integration with **Resend API**.
 
-Possible integration with Resend API.
+---
 
-✨ Vision
+# ✨ Vision
 
-WorkSpera aims to become a next-generation professional social network where users can:
+WorkSpera aims to become a **next-generation professional social network** where users can:
 
 💼 Build careers
 🤝 Connect with professionals
@@ -244,4 +232,4 @@ WorkSpera aims to become a next-generation professional social network where use
 💬 Communicate instantly
 🤖 Use AI assistance
 
-All inside one unified platform.
+All inside **one unified platform**.
