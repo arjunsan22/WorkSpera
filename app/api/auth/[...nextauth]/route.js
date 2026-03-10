@@ -38,6 +38,10 @@ export const authOptions = {
             throw new Error("Your account is not verified yet");
           }
 
+          if (user.isBlocked) {
+            throw new Error("Your account has been blocked by an administrator. Please contact support.");
+          }
+
           if (!user.password) {
             throw new Error("Please log in with Google");
           }
@@ -53,6 +57,7 @@ export const authOptions = {
             email: user.email,
             username: user.username,
             image: user.profileImage,
+            role: user.role || "user",
           };
         } catch (error) {
           console.error("Auth authorize error:", error.message);
@@ -71,6 +76,7 @@ export const authOptions = {
         token.id = user.id;
         token.username = user.username;
         token.image = user.image;
+        token.role = user.role;
       }
       return token;
     },
@@ -79,6 +85,7 @@ export const authOptions = {
         session.user.id = token.id;
         session.user.username = token.username;
         session.user.image = token.image;
+        session.user.role = token.role;
       }
       return session;
     },

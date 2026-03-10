@@ -76,6 +76,16 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Admin fields
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
     // Professional Profile Fields
     skills: {
       type: [String],
