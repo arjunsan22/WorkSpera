@@ -210,6 +210,7 @@ export default function Feeds() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [shareMenuPostId, setShareMenuPostId] = useState(null);
+  const [hoveredReactionPostId, setHoveredReactionPostId] = useState(null);
 
   useEffect(() => {
     fetchPosts();
@@ -285,7 +286,7 @@ export default function Feeds() {
     setToast({ message, type });
   };
 
-  const handleLike = async (postId) => {
+  const handleLike = async (postId, reactionType = 'like') => {
     if (!session) {
       showToast('Please login to like posts', 'error');
       return;
@@ -297,20 +298,38 @@ export default function Feeds() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: session.user.id }),
+        body: JSON.stringify({ userId: session.user.id, reactionType }),
       });
 
       if (response.ok) {
+        const data = await response.json();
         const updatedPosts = posts.map(post => {
           if (post._id === postId) {
-            const isLiked = post.likes.includes(session.user.id);
+            const currentReaction = post.userReaction;
+            let newIsLiked, newUserReaction, newLikeCount;
+
+            if (currentReaction === reactionType) {
+              // Same reaction clicked = unlike
+              newIsLiked = false;
+              newUserReaction = null;
+              newLikeCount = post.likeCount - 1;
+            } else if (currentReaction) {
+              // Different reaction = switch
+              newIsLiked = true;
+              newUserReaction = reactionType;
+              newLikeCount = post.likeCount; // count stays same
+            } else {
+              // New reaction
+              newIsLiked = true;
+              newUserReaction = reactionType;
+              newLikeCount = post.likeCount + 1;
+            }
+
             return {
               ...post,
-              likes: isLiked
-                ? post.likes.filter(id => id.toString() !== session.user.id)
-                : [...post.likes, session.user.id],
-              isLiked: !isLiked,
-              likeCount: isLiked ? post.likeCount - 1 : post.likeCount + 1
+              isLiked: newIsLiked,
+              userReaction: newUserReaction,
+              likeCount: newLikeCount,
             };
           }
           return post;
@@ -737,7 +756,7 @@ export default function Feeds() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.4, delay: index * 0.1 }}
-                    className="bg-slate-900/50 backdrop-blur-md rounded-3xl border border-slate-800/60 overflow-hidden shadow-2xl"
+                    className="bg-slate-900/50 backdrop-blur-md rounded-3xl border border-slate-800/60 shadow-2xl"
                   >
                     {/* Post Header */}
                     <div className="p-4 md:p-5 flex items-center justify-between">
@@ -824,15 +843,75 @@ export default function Feeds() {
                     <div className="px-4 py-3 border-t border-slate-800/50 bg-slate-800/20">
                       <div className="flex items-center justify-between px-2">
                         <div className="flex items-center gap-6">
-                          {/* Like Button */}
-                          <button
-                            onClick={() => handleLike(post._id)}
-                            className={`group flex items-center gap-2 transition-all active:scale-125 ${post.isLiked ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'
-                              }`}
+                          {/* Like / Reaction Button */}
+                          <div
+                            className="relative"
+                            onMouseEnter={() => setHoveredReactionPostId(post._id)}
+                            onMouseLeave={() => setHoveredReactionPostId(null)}
                           >
-                            {post.isLiked ? <FaHeart className="text-xl" /> : <FaRegHeart className="text-xl" />}
-                            <span className="text-sm font-bold">{post.likeCount}</span>
-                          </button>
+                            {/* Reaction Picker Popup */}
+                            <AnimatePresence>
+                              {hoveredReactionPostId === post._id && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 8, scale: 0.8 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: 8, scale: 0.8 }}
+                                  transition={{ duration: 0.2, ease: "easeOut" }}
+                                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-800/95 backdrop-blur-xl border border-slate-700/60 rounded-full px-2 py-1.5 shadow-2xl shadow-black/40 flex items-center gap-0.5 z-50"
+                                >
+                                  {[
+                                    { type: 'like', emoji: '👍', label: 'Like' },
+                                    { type: 'love', emoji: '❤️', label: 'Love' },
+                                    { type: 'celebrate', emoji: '👏', label: 'Celebrate' },
+                                    { type: 'insightful', emoji: '💡', label: 'Insightful' },
+                                    { type: 'support', emoji: '🤝', label: 'Support' },
+                                    { type: 'funny', emoji: '😂', label: 'Funny' },
+                                  ].map((reaction, idx) => (
+                                    <motion.button
+                                      key={reaction.type}
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ delay: idx * 0.04 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleLike(post._id, reaction.type);
+                                        setHoveredReactionPostId(null);
+                                      }}
+                                      className={`group/reaction relative w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-[1.45] hover:-translate-y-1.5 hover:bg-slate-700/50 ${post.userReaction === reaction.type ? 'bg-slate-700/60 ring-1 ring-indigo-500/50' : ''}`}
+                                      title={reaction.label}
+                                    >
+                                      <span className="text-[20px] select-none">{reaction.emoji}</span>
+                                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-slate-900 text-[10px] text-slate-300 rounded-md font-medium opacity-0 group-hover/reaction:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-slate-700/50">
+                                        {reaction.label}
+                                      </span>
+                                    </motion.button>
+                                  ))}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            {/* Main Like Button */}
+                            <button
+                              onClick={() => handleLike(post._id, post.userReaction || 'like')}
+                              className={`group flex items-center gap-2 transition-all active:scale-125 ${post.isLiked
+                                ? post.userReaction === 'love' ? 'text-rose-500'
+                                  : post.userReaction === 'celebrate' ? 'text-green-400'
+                                    : post.userReaction === 'insightful' ? 'text-amber-400'
+                                      : post.userReaction === 'support' ? 'text-purple-400'
+                                        : post.userReaction === 'funny' ? 'text-orange-400'
+                                          : 'text-blue-500'
+                                : 'text-slate-400 hover:text-blue-500'
+                                }`}
+                            >
+                              <span className="text-xl">
+                                {post.isLiked
+                                  ? { like: '👍', love: '❤️', celebrate: '👏', insightful: '💡', support: '🤝', funny: '😂' }[post.userReaction] || '👍'
+                                  : '👍'
+                                }
+                              </span>
+                              <span className="text-sm font-bold">{post.likeCount}</span>
+                            </button>
+                          </div>
 
                           {/* Comment Button */}
                           <button

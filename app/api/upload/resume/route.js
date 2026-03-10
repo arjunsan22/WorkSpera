@@ -13,16 +13,17 @@ export async function POST(request) {
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
+        // Clean the filename (remove extension and replace spaces) to avoid issues with Cloudinary public_id
+        const sanitizedFilename = file.name.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_");
+
         // Upload to Cloudinary
         const result = await new Promise((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
-                    resource_type: "auto", // auto detects pdf/docs as 'raw' or 'image' if it's an image. Safe to use 'auto' or 'raw' for resumes. 'auto' is better if they upload an image resume.
-                    // actually for PDF 'raw' or 'image' (if keeping format) is tricky. 'auto' is usually best.
-                    // But strict 'raw' is safer for true documents.
-                    // Let's use 'auto' to be flexible, or 'raw' if we strictly want validation.
-                    // Let's stick to 'auto' but maybe restrict client side.
+                    resource_type: "raw",
                     folder: "resumes",
+                    // Adding the extension here forces Cloudinary to recognize the raw document as a PDF in its URL
+                    public_id: `${sanitizedFilename}.pdf`,
                     access_mode: 'public',
                 },
                 (error, result) => {

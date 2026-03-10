@@ -60,15 +60,37 @@ export async function GET(request) {
         return { ...comment, replies: updatedReplies };
       }) || [];
 
-      // Normalize likes for comparison
-      const likeIds = (post.likes || []).map(id => String(id));
+      // Normalize likes for comparison - now likes are objects with { user, reactionType }
+      const likesArray = post.likes || [];
+      const likeUserIds = likesArray.map(like => {
+        // Handle both old format (plain ObjectId) and new format ({ user, reactionType })
+        if (like.user) return String(like.user);
+        return String(like);
+      });
+
+      // Find current user's reaction
+      const userReaction = userId
+        ? likesArray.find(like => {
+          const likeUserId = like.user ? String(like.user) : String(like);
+          return likeUserId === String(userId);
+        })
+        : null;
+
+      // Build reaction summary (count per type)
+      const reactionSummary = {};
+      likesArray.forEach(like => {
+        const type = like.reactionType || "like";
+        reactionSummary[type] = (reactionSummary[type] || 0) + 1;
+      });
 
       return {
         ...post,
         comments: updatedComments,
-        likeCount: likeIds.length,
+        likeCount: likesArray.length,
         commentCount: updatedComments.length,
-        isLiked: userId ? likeIds.includes(String(userId)) : false,
+        isLiked: userId ? likeUserIds.includes(String(userId)) : false,
+        userReaction: userReaction?.reactionType || null,
+        reactionSummary,
         isSaved: savedPostIds.has(String(post._id)),
       };
     });

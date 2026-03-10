@@ -2,33 +2,51 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Post from "@/models/Post";
+import connectDB from "@/lib/connectDB";
 
 export async function POST(request, { params }) {
   try {
+    await connectDB();
     const session = await getServerSession(authOptions);
 
     if (!session) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { userId } = await request.json();
-    const resolvedParams = await params; // ✅ Await params
-    const { id: postId } = resolvedParams; // ✅ Use the awaited params
+    const { userId, reactionType = "like" } = await request.json();
+    const resolvedParams = await params;
+    const { id: postId } = resolvedParams;
     const post = await Post.findById(postId);
     if (!post) {
       return Response.json({ error: "Post not found" }, { status: 404 });
     }
 
-    const userLiked = post.likes.includes(userId);
-    if (userLiked) {
-      post.likes = post.likes.filter((id) => id.toString() !== userId);
+    // Check if user already reacted
+    const existingReactionIndex = post.likes.findIndex(
+      (like) => like.user && like.user.toString() === userId
+    );
+
+    if (existingReactionIndex !== -1) {
+      // User already reacted
+      if (post.likes[existingReactionIndex].reactionType === reactionType) {
+        // Same reaction = toggle off (unlike)
+        post.likes.splice(existingReactionIndex, 1);
+      } else {
+        // Different reaction = update reaction type
+        post.likes[existingReactionIndex].reactionType = reactionType;
+      }
     } else {
-      post.likes.push(userId);
+      // New reaction
+      post.likes.push({ user: userId, reactionType });
     }
 
     await post.save();
 
-    return Response.json({ success: true }, { status: 200 });
+    return Response.json({
+      success: true,
+      likes: post.likes,
+      likeCount: post.likes.length,
+    }, { status: 200 });
   } catch (error) {
     console.error("Error handling like:", error);
     return Response.json({ error: "Internal server error" }, { status: 500 });
