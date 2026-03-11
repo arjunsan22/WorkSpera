@@ -430,25 +430,28 @@ export default function ProfilePage() {
     }
   };
 
-  // ✅ NEW: Function to upload image and get URL
+  // ✅ Function to upload image and get URL
   const uploadImageAndGetUrl = async (file) => {
     const formData = new FormData();
     formData.append('image', file);
 
     try {
-      const response = await fetch('/api/upload', { // You need to create this endpoint
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error('Upload failed');
+        console.error('Server upload error:', result);
+        throw new Error(result.message || result.error || 'Upload failed');
       }
 
-      const result = await response.json();
-      return result.url; // e.g., '/uploads/filename.jpg'
+      return result.url;
     } catch (error) {
       console.error('Image upload error:', error);
+      alert(`Image upload failed: ${error.message}`);
       return null;
     }
   };
