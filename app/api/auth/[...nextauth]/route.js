@@ -71,13 +71,63 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      if (account.provider === "google") {
+        try {
+          await connectDB();
+          const existingUser = await User.findOne({ email: user.email });
+
+          if (!existingUser) {
+            // Create a new user for Google login if they don't exist
+            const newUsername = user.email.split("@")[0] + Math.floor(Math.random() * 1000);
+            const newUser = new User({
+              name: user.name,
+              email: user.email,
+              username: newUsername,
+              profileImage: user.image,
+              isVerified: true,
+              role: "user",
+            });
+            await newUser.save();
+            user.id = newUser._id.toString();
+            user.role = newUser.role;
+            user.username = newUser.username;
+          } else {
+            // Attach existing user info to the session user object
+            user.id = existingUser._id.toString();
+            user.role = existingUser.role;
+            user.username = existingUser.username;
+          }
+        } catch (error) {
+          console.error("Error in signIn callback:", error);
+          return false;
+        }
+      }
+      return true;
+    },
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.username = user.username;
         token.image = user.image;
         token.role = user.role;
       }
+
+      // 🔄 If the role was changed in the database, we need to fetch it to keep the session updated
+      if (!token.role || token.role === "user") {
+        try {
+          await connectDB();
+          const dbUser = await User.findById(token.id).select("role username profileImage");
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.username = dbUser.username;
+            token.image = dbUser.profileImage;
+          }
+        } catch (error) {
+          console.error("Error fetching user in JWT callback:", error);
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
