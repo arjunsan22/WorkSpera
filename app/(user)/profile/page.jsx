@@ -441,7 +441,16 @@ export default function ProfilePage() {
         body: formData,
       });
 
-      const result = await response.json();
+      // Read response as text first (in case Vercel returns HTML error page)
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        // Server returned HTML instead of JSON (Vercel crash)
+        console.error('Server returned non-JSON response:', responseText.substring(0, 200));
+        throw new Error(`Server return invalid JSON response. Status Code ${response.status}. ${parseError.message}`);
+      }
 
       if (!response.ok) {
         console.error('Server upload error:', result);
@@ -455,6 +464,7 @@ export default function ProfilePage() {
       return null;
     }
   };
+
 
   // ✅ NEW: Function to handle file input and store in state as File objects
   const handleImageUpload = async (e, isPost = false) => {

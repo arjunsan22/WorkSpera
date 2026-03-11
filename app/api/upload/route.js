@@ -2,10 +2,10 @@
 import { NextResponse } from "next/server";
 import cloudinary from "@/lib/cloudinary";
 
-// Force Node.js runtime (not Edge) — required for Buffer and streams
+// Force Node.js runtime (not Edge) — required for Buffer
 export const runtime = "nodejs";
 
-// Allow up to 60 seconds for upload (Vercel free tier max is 60s)
+// Allow up to 60 seconds for upload (Vercel free tier max)
 export const maxDuration = 60;
 
 export async function POST(request) {
@@ -30,27 +30,15 @@ export async function POST(request) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
 
-    // Convert blob to buffer
+    // Convert blob to buffer, then to base64 data URI
     const bytes = await image.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64Data = `data:${image.type || "image/png"};base64,${buffer.toString("base64")}`;
 
-    // Upload to Cloudinary
-    const result = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          resource_type: "auto",
-          folder: "uploads",
-        },
-        (error, result) => {
-          if (error) {
-            console.error("Cloudinary upload_stream error:", JSON.stringify(error));
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        }
-      );
-      uploadStream.end(buffer);
+    // Upload to Cloudinary using base64 (reliable on Vercel serverless — no streaming)
+    const result = await cloudinary.uploader.upload(base64Data, {
+      resource_type: "auto",
+      folder: "uploads",
     });
 
     // Return the Cloudinary URL
@@ -63,4 +51,3 @@ export async function POST(request) {
     );
   }
 }
-
