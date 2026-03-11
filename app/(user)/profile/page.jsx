@@ -1813,12 +1813,28 @@ export default function ProfilePage() {
                   <div className="space-y-3">
                     {followersList.map((follower) => (
                       <div key={follower._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                            {follower.name.charAt(0).toUpperCase()}
+                        <div
+                          className="flex items-center gap-3 cursor-pointer group"
+                          onClick={() => {
+                            setShowFollowersModal(false);
+                            router.push(`/profile/${follower._id}`);
+                          }}
+                        >
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-700 flex-shrink-0">
+                            {follower.profileImage ? (
+                              <img
+                                src={follower.profileImage}
+                                alt={follower.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500">
+                                <FiUser className="w-5 h-5 text-white" />
+                              </div>
+                            )}
                           </div>
                           <div>
-                            <p className="text-slate-200">{follower.name}</p>
+                            <p className="text-slate-200 group-hover:text-indigo-400 transition-colors">{follower.name}</p>
                             <p className="text-slate-400 text-sm">@{follower.username}</p>
                           </div>
                         </div>
@@ -1881,12 +1897,28 @@ export default function ProfilePage() {
                   <div className="space-y-3">
                     {followingList.map((following) => (
                       <div key={following._id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                            {following.name.charAt(0).toUpperCase()}
+                        <div
+                          className="flex items-center gap-3 cursor-pointer group"
+                          onClick={() => {
+                            setShowFollowingModal(false);
+                            router.push(`/profile/${following._id}`);
+                          }}
+                        >
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-700 flex-shrink-0">
+                            {following.profileImage ? (
+                              <img
+                                src={following.profileImage}
+                                alt={following.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500">
+                                <FiUser className="w-5 h-5 text-white" />
+                              </div>
+                            )}
                           </div>
                           <div>
-                            <p className="text-slate-200">{following.name}</p>
+                            <p className="text-slate-200 group-hover:text-indigo-400 transition-colors">{following.name}</p>
                             <p className="text-slate-400 text-sm">@{following.username}</p>
                           </div>
                         </div>
