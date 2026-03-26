@@ -489,6 +489,35 @@ export default function Feeds() {
     }
   };
 
+  const handleVote = async (postId, optionId) => {
+    if (!session) {
+      showToast('Please login to vote', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/user/posts/${postId}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ optionId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(posts.map(post => 
+          post._id === postId ? { ...post, poll: data.poll } : post
+        ));
+        showToast('Vote submitted!');
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to submit vote', 'error');
+      }
+    } catch (error) {
+      console.error('Error voting:', error);
+      showToast('Error submitting vote', 'error');
+    }
+  };
+
   // No early return for loading, we handle it inside the layout
 
   return (
@@ -835,6 +864,55 @@ export default function Feeds() {
                               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300" />
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {/* Poll Rendering Support */}
+                      {post.poll && post.poll.options && post.poll.options.length > 0 && (
+                        <div className="mt-4 p-5 bg-slate-800/40 rounded-2xl border border-slate-700/50">
+                          {post.poll.question && (
+                            <h3 className="text-white font-bold text-lg mb-4">{post.poll.question}</h3>
+                          )}
+                          <div className="space-y-3">
+                            {post.poll.options.map((option) => (
+                              <div key={option._id} className="relative group">
+                                {post.poll.userVotedOptionId ? (
+                                  // Voted view - showing results
+                                  <div className={`relative flex items-center justify-between p-3 rounded-xl border overflow-hidden ${post.poll.userVotedOptionId === option._id ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-slate-700/50 bg-slate-800/60'}`}>
+                                    <div 
+                                      className={`absolute top-0 bottom-0 left-0 transition-all duration-1000 ease-out opacity-20 ${post.poll.userVotedOptionId === option._id ? 'bg-indigo-500' : 'bg-slate-500'}`}
+                                      style={{ width: `${option.percentage}%` }}
+                                    />
+                                    <div className="relative z-10 flex items-center gap-2">
+                                      <span className="font-semibold text-slate-200">{option.text}</span>
+                                      {post.poll.userVotedOptionId === option._id && (
+                                        <span className="bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Your Vote</span>
+                                      )}
+                                    </div>
+                                    <span className="relative z-10 font-bold text-slate-300">{option.percentage}%</span>
+                                  </div>
+                                ) : (
+                                  // Not voted view - actionable buttons
+                                  <button
+                                    onClick={() => handleVote(post._id, option._id)}
+                                    className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-600/50 hover:border-indigo-500/50 hover:bg-slate-700/50 transition-all text-left group-hover:shadow-[0_0_15px_rgba(99,102,241,0.1)]"
+                                  >
+                                    <span className="font-semibold text-slate-200">{option.text}</span>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="mt-4 flex items-center gap-2 text-sm text-slate-400 font-medium">
+                            <span className="text-slate-300">{post.poll.totalVotes || 0}</span> votes
+                            {post.poll.endDate && (
+                              <>
+                                <span>•</span>
+                                <span>Ends {new Date(post.poll.endDate).toLocaleDateString()}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

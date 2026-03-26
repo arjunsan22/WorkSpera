@@ -101,6 +101,22 @@ const PostSchema = new mongoose.Schema(
       enum: ["public", "private", "followers"],
       default: "public",
     },
+
+    poll: {
+      question: { type: String, default: "" },
+      options: [
+        {
+          text: { type: String },
+          votes: [
+            {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+          ],
+        },
+      ],
+      endDate: { type: Date },
+    },
   },
 
   {

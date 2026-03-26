@@ -83,6 +83,39 @@ export async function GET(request) {
         reactionSummary[type] = (reactionSummary[type] || 0) + 1;
       });
 
+      // Build poll summary if post has a poll
+      let pollSummary = null;
+      if (post.poll && post.poll.options && post.poll.options.length > 0) {
+        let totalVotes = 0;
+        let userVotedOptionId = null;
+        const optionsSummary = post.poll.options.map(option => {
+          const voteCount = option.votes ? option.votes.length : 0;
+          totalVotes += voteCount;
+          
+          if (userId && option.votes && option.votes.map(v => String(v)).includes(String(userId))) {
+            userVotedOptionId = String(option._id);
+          }
+          
+          return {
+            _id: String(option._id),
+            text: option.text,
+            voteCount: voteCount
+          };
+        });
+        
+        optionsSummary.forEach(opt => {
+          opt.percentage = totalVotes > 0 ? Math.round((opt.voteCount / totalVotes) * 100) : 0;
+        });
+
+        pollSummary = {
+          question: post.poll.question,
+          endDate: post.poll.endDate,
+          options: optionsSummary,
+          totalVotes,
+          userVotedOptionId
+        };
+      }
+
       return {
         ...post,
         comments: updatedComments,
@@ -92,6 +125,7 @@ export async function GET(request) {
         userReaction: userReaction?.reactionType || null,
         reactionSummary,
         isSaved: savedPostIds.has(String(post._id)),
+        poll: pollSummary || undefined,
       };
     });
 
@@ -112,7 +146,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { caption, images, userId, type } = body;
+    const { caption, images, userId, type, poll } = body;
 
     if (session.user.id !== userId) {
       return NextResponse.json(
@@ -126,9 +160,9 @@ export async function POST(request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (!images || images.length === 0) {
+    if ((!images || images.length === 0) && !poll) {
       return NextResponse.json(
-        { error: "At least one image is required" },
+        { error: "At least one image or a poll is required" },
         { status: 400 }
       );
     }
@@ -136,9 +170,10 @@ export async function POST(request) {
     const newPost = await Post.create({
       user: userId,
       caption: caption || "",
-      image: images,
+      image: images || [],
       type: type || 'feed',
       isServiceRequest: type === 'job', // Set based on type
+      poll: poll || undefined,
     });
 
     const finalPost = await Post.findById(newPost._id).populate(

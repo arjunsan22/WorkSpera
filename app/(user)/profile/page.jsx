@@ -46,6 +46,10 @@ export default function ProfilePage() {
   const [profileTab, setProfileTab] = useState('posts'); // 'posts' or 'saved'
   const [savedPosts, setSavedPosts] = useState([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  
+  // Poll creation states
+  const [isPollEnabled, setIsPollEnabled] = useState(false);
+  const [pollData, setPollData] = useState({ question: '', options: [{ text: '' }, { text: '' }] });
   useEffect(() => {
     if (session?.user?.id) {
       fetchProfileData();
@@ -226,6 +230,8 @@ export default function ProfilePage() {
     setIsEditPostsModalOpen(false);
     setTempPost({ caption: '', images: [], type: 'feed' });
     setSelectedPostForEdit(null);
+    setIsPollEnabled(false);
+    setPollData({ question: '', options: [{ text: '' }, { text: '' }] });
   };
   //handle follow modal
   const handleFollowInModal = async (targetUserId, isCurrentlyFollowing, listType) => {
@@ -271,8 +277,11 @@ export default function ProfilePage() {
   };
 
   const handleAddPost = async () => {
-    if (!tempPost.caption.trim() && tempPost.images.length === 0) {
-      alert('Please add a caption or at least one image.');
+    const validPollOptions = pollData.options.filter(o => o.text.trim());
+    const hasPoll = isPollEnabled && pollData.question.trim() && validPollOptions.length >= 2;
+
+    if (!tempPost.caption.trim() && tempPost.images.length === 0 && !hasPoll) {
+      alert('Please add a caption, at least one image, or a valid poll (question + 2 options).');
       return;
     }
 
@@ -302,15 +311,24 @@ export default function ProfilePage() {
       }
 
       // Then create the post with the image URLs
+      const postPayload = {
+        caption: tempPost.caption,
+        userId: session.user.id,
+        images: uploadedImageUrls,
+        type: tempPost.type,
+      };
+
+      if (hasPoll) {
+        postPayload.poll = {
+          question: pollData.question.trim(),
+          options: validPollOptions.map(o => ({ text: o.text.trim() }))
+        };
+      }
+
       const postResponse = await fetch('/api/user/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          caption: tempPost.caption,
-          userId: session.user.id,
-          images: uploadedImageUrls,
-          type: tempPost.type,
-        }),
+        body: JSON.stringify(postPayload),
       });
 
       if (!postResponse.ok) {
@@ -1119,7 +1137,7 @@ export default function ProfilePage() {
                       )}
 
                       <div className="p-4">
-                        <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption}</p>
+                        <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption || post.poll?.question || 'Untitled'}</p>
 
                         <div className="flex items-center justify-between text-slate-400 text-sm">
                           <div className="flex items-center gap-4">
@@ -1222,7 +1240,7 @@ export default function ProfilePage() {
                           />
                           <span className="text-slate-300 text-xs font-semibold">{post.user?.name}</span>
                         </div>
-                        <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption}</p>
+                        <p className="text-slate-200 text-sm mb-3 line-clamp-2">{post.caption || post.poll?.question || 'Untitled'}</p>
 
                         <div className="flex items-center justify-between text-slate-400 text-sm">
                           <div className="flex items-center gap-4">
@@ -1621,6 +1639,66 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   )}
+
+                  {/* Poll Creation Toggle & Form */}
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setIsPollEnabled(!isPollEnabled)}
+                      className="text-sm flex items-center gap-2 text-indigo-400 font-medium hover:text-indigo-300 transition-colors"
+                    >
+                      <span>{isPollEnabled ? '− Remove Poll' : '+ Add Poll'}</span>
+                    </button>
+
+                    {isPollEnabled && (
+                      <div className="mt-3 p-4 bg-slate-800/50 rounded-xl border border-slate-600/50">
+                        <input
+                          type="text"
+                          placeholder="Your question..."
+                          value={pollData.question}
+                          onChange={(e) => setPollData({ ...pollData, question: e.target.value })}
+                          className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 mb-3"
+                        />
+                        <div className="space-y-2 mb-3">
+                          {pollData.options.map((opt, idx) => (
+                            <div key={idx} className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  placeholder={`Option ${idx + 1}`}
+                                  value={opt.text}
+                                  onChange={(e) => {
+                                    const newOptions = [...pollData.options];
+                                    newOptions[idx].text = e.target.value;
+                                    setPollData({ ...pollData, options: newOptions });
+                                  }}
+                                  className="flex-1 px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                />
+                                {idx >= 2 && (
+                                  <button
+                                    onClick={() => {
+                                      const newOptions = pollData.options.filter((_, i) => i !== idx);
+                                      setPollData({ ...pollData, options: newOptions });
+                                    }}
+                                    className="p-2 text-slate-400 hover:text-red-400 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                  >
+                                    <FiX className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {pollData.options.length < 5 && (
+                          <button
+                            onClick={() => setPollData({ ...pollData, options: [...pollData.options, { text: '' }] })}
+                            className="text-sm font-medium text-slate-400 hover:text-indigo-400 transition-colors"
+                          >
+                            + Add Option
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={handleAddPost}
                     disabled={isUploading}
@@ -1747,7 +1825,7 @@ export default function ProfilePage() {
                               />
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-slate-200 truncate">{post.caption || 'No caption'}</p>
+                              <p className="text-slate-200 truncate">{post.caption || post.poll?.question || 'No caption'}</p>
                               <p className="text-xs text-slate-400 mt-1">
                                 {new Date(post.createdAt).toLocaleDateString()}
                               </p>
