@@ -11,6 +11,7 @@ import Link from 'next/link';
 import StoryUploader from "@/app/components/stories/StoryUploader";
 import MyStoriesManager from "@/app/components/stories/MyStoriesManager";
 import ChatBot from "@/app/components/user/ChatBot";
+import ReactionModal from "@/app/components/user/ReactionModal";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -46,6 +47,8 @@ export default function ProfilePage() {
   const [profileTab, setProfileTab] = useState('posts'); // 'posts' or 'saved'
   const [savedPosts, setSavedPosts] = useState([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [showReactionModal, setShowReactionModal] = useState(false);
+  const [reactionModalLikes, setReactionModalLikes] = useState([]);
   
   // Poll creation states
   const [isPollEnabled, setIsPollEnabled] = useState(false);
@@ -1141,7 +1144,14 @@ export default function ProfilePage() {
 
                         <div className="flex items-center justify-between text-slate-400 text-sm">
                           <div className="flex items-center gap-4">
-                            <span className="flex items-center gap-1">
+                            <span 
+                              className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReactionModalLikes(post.likes || []);
+                                setShowReactionModal(true);
+                              }}
+                            >
                               <FiHeart className="w-4 h-4" />
                               {post.likes?.length || 0}
                             </span>
@@ -1244,7 +1254,14 @@ export default function ProfilePage() {
 
                         <div className="flex items-center justify-between text-slate-400 text-sm">
                           <div className="flex items-center gap-4">
-                            <span className="flex items-center gap-1">
+                            <span 
+                              className="flex items-center gap-1 cursor-pointer hover:text-indigo-400 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReactionModalLikes(post.likes || []);
+                                setShowReactionModal(true);
+                              }}
+                            >
                               <FiHeart className="w-4 h-4" />
                               {post.likes?.length || 0}
                             </span>
@@ -2189,6 +2206,11 @@ export default function ProfilePage() {
 
       {/* AI Chatbot */}
       <ChatBot />
+      <ReactionModal 
+        isOpen={showReactionModal} 
+        onClose={() => setShowReactionModal(false)} 
+        likes={reactionModalLikes} 
+      />
     </div>
   );
 }

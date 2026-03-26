@@ -7,6 +7,7 @@ import { FaHeart, FaRegHeart, FaComment, FaShare, FaTimes, FaWhatsapp, FaBookmar
 import Link from "next/link";
 import { FiArrowLeft, FiUserPlus, FiMenu, FiUser, FiMessageSquare, FiBookOpen, FiBell, FiLogOut, FiRefreshCw, FiX } from "react-icons/fi";
 import StoryFeed from "@/app/components/stories/StoryFeed";
+import ReactionModal from "@/app/components/user/ReactionModal";
 // Toast Component
 const Toast = ({ message, type = 'success', onClose }) => {
   useEffect(() => {
@@ -211,6 +212,8 @@ export default function Feeds() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [shareMenuPostId, setShareMenuPostId] = useState(null);
   const [hoveredReactionPostId, setHoveredReactionPostId] = useState(null);
+  const [showReactionModal, setShowReactionModal] = useState(false);
+  const [reactionModalLikes, setReactionModalLikes] = useState([]);
 
   useEffect(() => {
     fetchPosts();
@@ -329,7 +332,8 @@ export default function Feeds() {
               ...post,
               isLiked: newIsLiked,
               userReaction: newUserReaction,
-              likeCount: newLikeCount,
+              likeCount: data.likes ? data.likes.length : newLikeCount,
+              likes: data.likes || post.likes // Update with populated likes array
             };
           }
           return post;
@@ -504,7 +508,7 @@ export default function Feeds() {
 
       if (response.ok) {
         const data = await response.json();
-        setPosts(posts.map(post => 
+        setPosts(posts.map(post =>
           post._id === postId ? { ...post, poll: data.poll } : post
         ));
         showToast('Vote submitted!');
@@ -879,7 +883,7 @@ export default function Feeds() {
                                 {post.poll.userVotedOptionId ? (
                                   // Voted view - showing results
                                   <div className={`relative flex items-center justify-between p-3 rounded-xl border overflow-hidden ${post.poll.userVotedOptionId === option._id ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-slate-700/50 bg-slate-800/60'}`}>
-                                    <div 
+                                    <div
                                       className={`absolute top-0 bottom-0 left-0 transition-all duration-1000 ease-out opacity-20 ${post.poll.userVotedOptionId === option._id ? 'bg-indigo-500' : 'bg-slate-500'}`}
                                       style={{ width: `${option.percentage}%` }}
                                     />
@@ -903,7 +907,7 @@ export default function Feeds() {
                               </div>
                             ))}
                           </div>
-                          
+
                           <div className="mt-4 flex items-center gap-2 text-sm text-slate-400 font-medium">
                             <span className="text-slate-300">{post.poll.totalVotes || 0}</span> votes
                             {post.poll.endDate && (
@@ -918,12 +922,53 @@ export default function Feeds() {
                     </div>
 
                     {/* Action Bar */}
-                    <div className="px-4 py-3 border-t border-slate-800/50 bg-slate-800/20">
-                      <div className="flex items-center justify-between px-2">
-                        <div className="flex items-center gap-6">
-                          {/* Like / Reaction Button */}
+                    <div className="px-4 py-2 border-t border-slate-800/50 bg-slate-800/20">
+                      {/* Interaction Summary (LinkedIn Style) */}
+                      {(post.likeCount > 0 || post.commentCount > 0) && (
+                        <div className="flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-700/30">
                           <div
-                            className="relative"
+                            className="flex items-center gap-1.5 cursor-pointer hover:underline transition-all group"
+                            onClick={() => {
+                              setReactionModalLikes(post.likes || []);
+                              setShowReactionModal(true);
+                            }}
+                          >
+                            <div className="flex -space-x-1 items-center">
+                              {[...new Set((post.likes || []).map(l => l.reactionType || 'like'))].slice(0, 3).map((type, idx) => (
+                                <span key={idx} className="relative z-[3] inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-800 ring-1 ring-slate-700 text-[10px] shadow-sm">
+                                  {{
+                                    like: '👍',
+                                    love: '❤️',
+                                    celebrate: '👏',
+                                    insightful: '💡',
+                                    support: '🤝',
+                                    funny: '😂'
+                                  }[type] || '👍'}
+                                </span>
+                              ))}
+                            </div>
+                            <span className="text-[12px] text-slate-400 group-hover:text-indigo-400 group-hover:underline font-medium">
+                              {post.likeCount}
+                            </span>
+                          </div>
+
+                          {post.commentCount > 0 && (
+                            <div
+                              className="text-[12px] text-slate-400 cursor-pointer hover:underline hover:text-indigo-400 transition-all font-medium"
+                              onClick={() => setSelectedPost(post)}
+                            >
+                              {post.commentCount} {post.commentCount === 1 ? 'comment' : 'comments'}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action Buttons Row */}
+                      <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center justify-around w-full gap-1">
+                          {/* Like / Reaction Button Container */}
+                          <div
+                            className="relative flex-1"
                             onMouseEnter={() => setHoveredReactionPostId(post._id)}
                             onMouseLeave={() => setHoveredReactionPostId(null)}
                           >
@@ -968,17 +1013,15 @@ export default function Feeds() {
                               )}
                             </AnimatePresence>
 
-                            {/* Main Like Button */}
+                            {/* Main Button */}
                             <button
-                              onClick={() => handleLike(post._id, post.userReaction || 'like')}
-                              className={`group flex items-center gap-2 transition-all active:scale-125 ${post.isLiked
-                                ? post.userReaction === 'love' ? 'text-rose-500'
-                                  : post.userReaction === 'celebrate' ? 'text-green-400'
-                                    : post.userReaction === 'insightful' ? 'text-amber-400'
-                                      : post.userReaction === 'support' ? 'text-purple-400'
-                                        : post.userReaction === 'funny' ? 'text-orange-400'
-                                          : 'text-blue-500'
-                                : 'text-slate-400 hover:text-blue-500'
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLike(post._id, post.userReaction || 'like');
+                              }}
+                              className={`flex items-center justify-center gap-2 py-2 w-full rounded-lg hover:bg-slate-700/40 transition-all active:scale-95 ${post.isLiked
+                                ? { love: 'text-rose-500', celebrate: 'text-green-400', insightful: 'text-amber-400', support: 'text-purple-400', funny: 'text-orange-400' }[post.userReaction] || 'text-blue-500'
+                                : 'text-slate-400 hover:text-white'
                                 }`}
                             >
                               <span className="text-xl">
@@ -987,58 +1030,68 @@ export default function Feeds() {
                                   : '👍'
                                 }
                               </span>
-                              <span className="text-sm font-bold">{post.likeCount}</span>
+                              <span className="text-[14px] font-bold">
+                                {post.isLiked ? (post.userReaction ? post.userReaction.charAt(0).toUpperCase() + post.userReaction.slice(1) : 'Like') : 'Like'}
+                              </span>
                             </button>
                           </div>
 
                           {/* Comment Button */}
                           <button
                             onClick={() => setSelectedPost(post)}
-                            className="group flex items-center gap-2 text-slate-400 hover:text-sky-400 transition-all active:scale-125"
+                            className="flex-1 flex items-center justify-center gap-2 py-2 text-slate-400 hover:text-white hover:bg-slate-700/40 rounded-lg transition-all active:scale-95"
                           >
-                            <FaComment className="text-xl" />
-                            <span className="text-sm font-bold">{post.commentCount}</span>
+                            <FaComment className="text-lg" />
+                            <span className="text-[14px] font-bold">Comment</span>
                           </button>
-                        </div>
 
-                        <div className="flex items-center gap-5">
-                          {/* Share Button with Dropdown */}
-                          <div className="relative">
+                          {/* Save Button */}
+                          <button
+                            onClick={() => handleSavePost(post._id)}
+                            className={`flex flex-1 items-center justify-center gap-2 py-2 rounded-lg transition-all active:scale-95 hover:bg-slate-700/40 ${post.isSaved ? 'text-amber-400 hover:text-amber-300' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            {post.isSaved ? <FaBookmark className="text-lg" /> : <FaRegBookmark className="text-lg" />}
+                            <span className="text-[14px] font-bold hidden sm:inline">Save</span>
+                          </button>
+
+                          {/* Send Button with Dropdown */}
+                          <div className="flex-1 relative flex">
                             <button
                               onClick={() => handleShare(post._id)}
-                              className="flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition-all active:scale-125"
+                              className="w-full flex items-center justify-center gap-2 py-2 text-slate-400 hover:text-white hover:bg-slate-700/40 rounded-lg transition-all active:scale-95"
                             >
-                              <FaShare className="text-xl" />
+                              <FaShare className="text-lg" />
+                              <span className="text-[14px] font-bold hidden sm:inline">Send</span>
                             </button>
 
                             {/* Share Dropdown Menu */}
-                            {shareMenuPostId === post._id && (
-                              <div className="absolute bottom-full right-0 mb-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-scale-in">
-                                <button
-                                  onClick={() => handleCopyLink(post._id)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-200 hover:bg-slate-700/70 transition-colors"
+                            <AnimatePresence>
+                              {shareMenuPostId === post._id && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                  transition={{ duration: 0.15 }}
+                                  className="absolute bottom-full right-0 mb-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50"
                                 >
-                                  <FaCopy className="text-sky-400" />
-                                  Copy Link
-                                </button>
-                                <button
-                                  onClick={() => handleWhatsAppShare(post)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-200 hover:bg-slate-700/70 transition-colors border-t border-slate-700/50"
-                                >
-                                  <FaWhatsapp className="text-green-400" />
-                                  Share via WhatsApp
-                                </button>
-                              </div>
-                            )}
+                                  <button
+                                    onClick={() => handleCopyLink(post._id)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-200 hover:bg-slate-700/70 transition-colors"
+                                  >
+                                    <FaCopy className="text-sky-400" />
+                                    Copy Link
+                                  </button>
+                                  <button
+                                    onClick={() => handleWhatsAppShare(post)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-200 hover:bg-slate-700/70 transition-colors border-t border-slate-700/50"
+                                  >
+                                    <FaWhatsapp className="text-green-400" />
+                                    Share via WhatsApp
+                                  </button>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
-
-                          {/* Save/Bookmark Button */}
-                          <button
-                            onClick={() => handleSavePost(post._id)}
-                            className={`transition-all active:scale-125 ${post.isSaved ? 'text-amber-400' : 'text-slate-400 hover:text-amber-400'}`}
-                          >
-                            {post.isSaved ? <FaBookmark className="text-xl" /> : <FaRegBookmark className="text-xl" />}
-                          </button>
                         </div>
                       </div>
 
@@ -1075,6 +1128,12 @@ export default function Feeds() {
             )}
           </div>
         </div>
+
+        <ReactionModal
+          isOpen={showReactionModal}
+          onClose={() => setShowReactionModal(false)}
+          likes={reactionModalLikes}
+        />
       </div >
 
       {/* Notification Modal */}

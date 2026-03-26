@@ -23,6 +23,7 @@ export async function GET(request) {
     let posts = await Post.find({ visibility: "public" })
       .populate("user", "name username profileImage")
       .populate("comments.user", "name username profileImage")
+      .populate("likes.user", "name username profileImage")
       .sort({ createdAt: -1 })
       .lean({ defaults: true }); // ensures consistent object shape
 
@@ -64,6 +65,8 @@ export async function GET(request) {
       const likesArray = post.likes || [];
       const likeUserIds = likesArray.map(like => {
         // Handle both old format (plain ObjectId) and new format ({ user, reactionType })
+        // If populated user
+        if (like.user && typeof like.user === 'object' && like.user._id) return String(like.user._id);
         if (like.user) return String(like.user);
         return String(like);
       });
@@ -71,7 +74,9 @@ export async function GET(request) {
       // Find current user's reaction
       const userReaction = userId
         ? likesArray.find(like => {
-          const likeUserId = like.user ? String(like.user) : String(like);
+          const likeUserId = (like.user && typeof like.user === 'object' && like.user._id) 
+                              ? String(like.user._id) 
+                              : (like.user ? String(like.user) : String(like));
           return likeUserId === String(userId);
         })
         : null;

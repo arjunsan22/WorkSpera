@@ -42,10 +42,12 @@ export async function POST(request, { params }) {
 
     await post.save();
 
+    const populatedPost = await Post.findById(postId).populate("likes.user", "name username profileImage").lean();
+
     return Response.json({
       success: true,
-      likes: post.likes,
-      likeCount: post.likes.length,
+      likes: populatedPost.likes,
+      likeCount: populatedPost.likes.length,
     }, { status: 200 });
   } catch (error) {
     console.error("Error handling like:", error);
