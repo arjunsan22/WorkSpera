@@ -92,11 +92,28 @@ export const authOptions = {
             user.id = newUser._id.toString();
             user.role = newUser.role;
             user.username = newUser.username;
+            user.image = newUser.profileImage;
           } else {
+            // Block check for existing users signing in via Google
+            if (existingUser.isBlocked) {
+              return false;
+            }
+
+            // Update profile image from Google if user still has default
+            if (
+              user.image &&
+              (!existingUser.profileImage ||
+                existingUser.profileImage === "/public/profile-default-image.png")
+            ) {
+              existingUser.profileImage = user.image;
+              await existingUser.save();
+            }
+
             // Attach existing user info to the session user object
             user.id = existingUser._id.toString();
             user.role = existingUser.role;
             user.username = existingUser.username;
+            user.image = existingUser.profileImage;
           }
         } catch (error) {
           console.error("Error in signIn callback:", error);
