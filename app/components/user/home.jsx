@@ -9,7 +9,7 @@ import {
   FiX, FiUser, FiTrash2, FiRefreshCw, FiMenu, FiCheck
 } from 'react-icons/fi';
 import { FaWhatsapp } from "react-icons/fa";
-import ChatWindow from './user-chat-window';
+import ChatWindow from "./ChatWindow";
 import NotificationModal from "@/app/components/user/NotificationModal";
 import { useSocket } from '@/hooks/useSocket';
 
