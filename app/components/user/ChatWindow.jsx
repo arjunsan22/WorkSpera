@@ -3,13 +3,76 @@
 
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSend, FiArrowLeft, FiMoreVertical, FiPaperclip, FiImage, FiPhone, FiPhoneOff } from 'react-icons/fi';
+import { FiSend, FiArrowLeft, FiMoreVertical, FiPaperclip, FiImage, FiPhone, FiPhoneOff, FiX, FiZoomIn } from 'react-icons/fi';
 import { useSocket } from '@/hooks/useSocket';
 import VideoCallModal from '@/app/components/user/VideoCallModal';
 import IncomingCallModal from '@/app/components/user/IncomingCallModal';
 import { useWebRTC } from '@/hooks/useWebRTC';
+
+// ─── Tick Component (WhatsApp-style) ───────────────────────────
+function MessageTicks({ status }) {
+    if (status === 'seen') {
+        // Double tick — blue (seen)
+        return (
+            <span className="inline-flex items-center ml-1" title="Seen">
+                <svg width="18" height="12" viewBox="0 0 18 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 6L4.5 9.5L12 2" stroke="#60A5FA" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 6L9.5 9.5L17 2" stroke="#60A5FA" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </span>
+        );
+    }
+    if (status === 'delivered') {
+        // Double tick — gray (delivered but not read)
+        return (
+            <span className="inline-flex items-center ml-1" title="Delivered">
+                <svg width="18" height="12" viewBox="0 0 18 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 6L4.5 9.5L12 2" stroke="#94A3B8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 6L9.5 9.5L17 2" stroke="#94A3B8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </span>
+        );
+    }
+    // Single tick — gray (sent)
+    return (
+        <span className="inline-flex items-center ml-1" title="Sent">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 6L4.5 9.5L11 2" stroke="#94A3B8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        </span>
+    );
+}
+
+// ─── Image Lightbox Modal ──────────────────────────────────────
+function ImageLightbox({ src, onClose }) {
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center cursor-zoom-out"
+        >
+            <button
+                onClick={onClose}
+                className="absolute top-6 right-6 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors z-10"
+            >
+                <FiX className="w-6 h-6" />
+            </button>
+            <motion.img
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                src={src}
+                alt="Full size"
+                className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            />
+        </motion.div>
+    );
+}
 
 export default function ChatWindow({ chatId }) {
     const router = useRouter();
@@ -19,8 +82,12 @@ export default function ChatWindow({ chatId }) {
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [imagePreview, setImagePreview] = useState(null); // { file, url }
+    const [lightboxImage, setLightboxImage] = useState(null);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
+    const fileInputRef = useRef(null);
     const userId = chatId;
     const { socket, isConnected } = useSocket(session?.user?.id);
 
@@ -43,24 +110,77 @@ export default function ChatWindow({ chatId }) {
         fetchChatData();
     }, [userId, session]);
 
+    // Emit "messages-seen" when chat is opened or new messages come in
+    useEffect(() => {
+        if (socket && userId && session?.user?.id) {
+            socket.emit('messages-seen', {
+                readerId: session.user.id,
+                senderId: userId,
+            });
+        }
+    }, [socket, userId, session?.user?.id, messages.length]);
+
+    // Listen for real-time read receipt updates (when the OTHER user reads our messages)
+    useEffect(() => {
+        if (!socket || !userId) return;
+
+        const handleReadUpdate = (data) => {
+            // data: { readerId, status }
+            if (data.readerId === userId && data.status === 'seen') {
+                setMessages(prev =>
+                    prev.map(msg => {
+                        const msgSenderId = msg.senderId?.toString?.() || msg.senderId;
+                        if (msgSenderId === session?.user?.id && msg.status !== 'seen') {
+                            return { ...msg, status: 'seen' };
+                        }
+                        return msg;
+                    })
+                );
+            }
+        };
+
+        socket.on('messages-read-update', handleReadUpdate);
+        return () => socket.off('messages-read-update', handleReadUpdate);
+    }, [socket, userId, session?.user?.id]);
+
     useEffect(() => {
         if (socket && userId) {
             const handleReceiveMessage = (message) => {
                 // Only add the message if it belongs to this conversation
-                // i.e., the sender is the person we're currently chatting with
                 const msgSenderId = message.senderId?.toString?.() || message.senderId;
                 if (msgSenderId === userId) {
                     setMessages(prev => [...prev, message]);
+
+                    // Immediately tell sender we've seen it (we're in the chat right now)
+                    socket.emit('messages-seen', {
+                        readerId: session.user.id,
+                        senderId: userId,
+                    });
                 }
             };
 
+            // Listen for message-sent to update local message status
+            const handleMessageSent = (data) => {
+                // data: { status, messageId }
+                setMessages(prev =>
+                    prev.map(msg => {
+                        if (msg.isLocal) {
+                            return { ...msg, _id: data.messageId, status: data.status, isLocal: false };
+                        }
+                        return msg;
+                    })
+                );
+            };
+
             socket.on('receive-message', handleReceiveMessage);
+            socket.on('message-sent', handleMessageSent);
 
             return () => {
                 socket.off('receive-message', handleReceiveMessage);
+                socket.off('message-sent', handleMessageSent);
             };
         }
-    }, [socket, userId]);
+    }, [socket, userId, session?.user?.id]);
 
     const fetchChatData = async () => {
         try {
@@ -87,33 +207,107 @@ export default function ChatWindow({ chatId }) {
         scrollToBottom();
     }, [messages]);
 
+    // ─── Image Upload Handler ──────────────────────────────────
+    const handleImageSelect = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Only JPEG, PNG, GIF, and WebP images are allowed.');
+            return;
+        }
+
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image must be under 5MB.');
+            return;
+        }
+
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview({ file, url: previewUrl });
+
+        // Reset file input so the same file can be selected again
+        e.target.value = '';
+    };
+
+    const cancelImagePreview = () => {
+        if (imagePreview?.url) {
+            URL.revokeObjectURL(imagePreview.url);
+        }
+        setImagePreview(null);
+    };
+
+    const uploadImage = async (file) => {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch('/api/upload/chat-image', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error || 'Upload failed');
+        }
+
+        const data = await response.json();
+        return data.url;
+    };
+
+    // ─── Send Message (text and/or image) ──────────────────────
     const sendMessage = async () => {
-        if (!newMessage.trim() || !socket || isSending) return;
+        const hasText = newMessage.trim().length > 0;
+        const hasImage = !!imagePreview;
+
+        if ((!hasText && !hasImage) || !socket || isSending) return;
 
         setIsSending(true);
 
-        const messageData = {
-            senderId: session.user.id,
-            receiverId: userId,
-            content: newMessage,
-            timestamp: new Date().toISOString()
-        };
-
         try {
+            let uploadedImageUrl = null;
+
+            // Upload image first if present
+            if (hasImage) {
+                setIsUploadingImage(true);
+                try {
+                    uploadedImageUrl = await uploadImage(imagePreview.file);
+                } catch (uploadErr) {
+                    console.error('Image upload failed:', uploadErr);
+                    alert('Failed to upload image. Please try again.');
+                    setIsUploadingImage(false);
+                    setIsSending(false);
+                    return;
+                }
+                setIsUploadingImage(false);
+            }
+
+            const messageData = {
+                senderId: session.user.id,
+                receiverId: userId,
+                content: newMessage.trim() || '',
+                imageUrl: uploadedImageUrl,
+                timestamp: new Date().toISOString()
+            };
+
             const localMessage = {
                 ...messageData,
                 _id: `local-${Date.now()}`,
-                isLocal: true
+                isLocal: true,
+                status: 'sent',
             };
 
             setMessages(prev => [...prev, localMessage]);
             socket.emit('send-message', messageData);
             setNewMessage('');
+            cancelImagePreview();
             inputRef.current?.focus();
 
         } catch (error) {
             console.error('Error sending message:', error);
-            setMessages(prev => prev.filter(msg => msg._id !== localMessage._id));
         } finally {
             setIsSending(false);
         }
@@ -208,32 +402,93 @@ export default function ChatWindow({ chatId }) {
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4 bg-slate-900/20">
                 <AnimatePresence>
-                    {messages.map((message) => (
-                        <motion.div
-                            key={message._id || `${message.timestamp}-${message.senderId}`}
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            className={`flex ${message.senderId === session.user.id ? 'justify-end' : 'justify-start'}`}
-                        >
-                            <div className={`max-w-[70%] ${message.senderId === session.user.id ? 'items-end' : 'items-start'}`}>
-                                <div
-                                    className={`px-4 py-3 rounded-2xl shadow-sm break-words text-sm ${message.senderId === session.user.id
-                                        ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'
-                                        : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700/50'
-                                        }`}
-                                >
-                                    <p className="leading-relaxed">{message.content}</p>
+                    {messages.map((message) => {
+                        const isMine = (message.senderId?.toString?.() || message.senderId) === session.user.id;
+                        return (
+                            <motion.div
+                                key={message._id || `${message.timestamp}-${message.senderId}`}
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'}`}>
+                                    <div
+                                        className={`rounded-2xl shadow-sm break-words text-sm overflow-hidden ${isMine
+                                            ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'
+                                            : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700/50'
+                                            } ${message.imageUrl && !message.content ? '' : 'px-4 py-3'}`}
+                                    >
+                                        {/* Image */}
+                                        {message.imageUrl && (
+                                            <div
+                                                className={`relative group cursor-pointer ${message.content ? 'mb-2' : ''} ${message.imageUrl && !message.content ? 'p-1' : ''}`}
+                                                onClick={() => setLightboxImage(message.imageUrl)}
+                                            >
+                                                <img
+                                                    src={message.imageUrl}
+                                                    alt="Shared image"
+                                                    className="max-w-full rounded-xl max-h-72 object-cover"
+                                                    loading="lazy"
+                                                />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-xl flex items-center justify-center">
+                                                    <FiZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Text content */}
+                                        {message.content && (
+                                            <p className={`leading-relaxed ${message.imageUrl ? 'px-4 py-2' : ''}`}>{message.content}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Timestamp + Ticks */}
+                                    <div className={`flex items-center gap-0.5 mt-1.5 px-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                                        <span className="text-[10px] text-slate-500">
+                                            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                        {isMine && (
+                                            <MessageTicks status={message.status || (message.isRead ? 'seen' : 'sent')} />
+                                        )}
+                                    </div>
                                 </div>
-                                <p className={`text-[10px] mt-1.5 px-1 ${message.senderId === session.user.id ? 'text-slate-500 text-right' : 'text-slate-500'
-                                    }`}>
-                                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
-                            </div>
-                        </motion.div>
-                    ))}
+                            </motion.div>
+                        );
+                    })}
                 </AnimatePresence>
                 <div ref={messagesEndRef} />
             </div>
+
+            {/* Image Preview Strip */}
+            <AnimatePresence>
+                {imagePreview && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="bg-slate-900/80 border-t border-slate-700/50 px-4 py-3 overflow-hidden"
+                    >
+                        <div className="relative inline-block">
+                            <img
+                                src={imagePreview.url}
+                                alt="Preview"
+                                className="h-24 w-auto rounded-xl object-cover border border-slate-600/50"
+                            />
+                            <button
+                                onClick={cancelImagePreview}
+                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-400 transition-colors shadow-lg"
+                            >
+                                <FiX className="w-3.5 h-3.5" />
+                            </button>
+                            {isUploadingImage && (
+                                <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Input Area */}
             <div className="p-4 bg-slate-900/80 backdrop-blur-xl border-t border-slate-700/50 shrink-0">
@@ -241,9 +496,22 @@ export default function ChatWindow({ chatId }) {
                     <button className="p-2.5 rounded-xl hover:bg-slate-700 text-slate-400 hover:text-indigo-400 transition-colors">
                         <FiPaperclip className="w-5 h-5" />
                     </button>
-                    <button className="p-2.5 rounded-xl hover:bg-slate-700 text-slate-400 hover:text-indigo-400 transition-colors">
+
+                    {/* Image picker button */}
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-2.5 rounded-xl hover:bg-slate-700 text-slate-400 hover:text-indigo-400 transition-colors"
+                        disabled={isUploadingImage}
+                    >
                         <FiImage className="w-5 h-5" />
                     </button>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        onChange={handleImageSelect}
+                        className="hidden"
+                    />
 
                     <textarea
                         ref={inputRef}
@@ -259,7 +527,7 @@ export default function ChatWindow({ chatId }) {
 
                     <button
                         onClick={sendMessage}
-                        disabled={!newMessage.trim() || !isConnected || isSending}
+                        disabled={(!newMessage.trim() && !imagePreview) || !isConnected || isSending}
                         className="p-2.5 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
                     >
                         {isSending ? (
@@ -276,6 +544,13 @@ export default function ChatWindow({ chatId }) {
                     </p>
                 </div>
             </div>
+
+            {/* Image Lightbox */}
+            <AnimatePresence>
+                {lightboxImage && (
+                    <ImageLightbox src={lightboxImage} onClose={() => setLightboxImage(null)} />
+                )}
+            </AnimatePresence>
 
             {/* Calling state - show overlay while waiting for answer */}
             {isCalling && !isInCall && (

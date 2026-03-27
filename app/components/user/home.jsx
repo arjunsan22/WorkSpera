@@ -59,9 +59,12 @@ export default function Home({ selectedChatId }) {
           const updatedChat = {
             ...existingChat,
             lastMessage: {
-              content: message.content,
+              senderId: otherUserId,
+              content: message.content || '',
+              imageUrl: message.imageUrl || null,
               timestamp: message.timestamp || new Date().toISOString(),
               isRead: false,
+              status: message.status || 'delivered',
             },
             // Only increment unread if this chat is NOT currently open
             unreadCount: selectedChatId === otherUserId
@@ -90,7 +93,8 @@ export default function Home({ selectedChatId }) {
           const senderChat = prev.find(c => c.user._id === otherUserId);
           const senderName = senderChat?.user?.name || 'Someone';
           const senderImage = senderChat?.user?.profileImage || null;
-          showToast(senderName, message.content, senderImage, otherUserId);
+          const displayContent = message.imageUrl && !message.content ? '📷 Photo' : message.content;
+          showToast(senderName, displayContent, senderImage, otherUserId);
           return prev; // don't modify
         });
       }
@@ -113,9 +117,12 @@ export default function Home({ selectedChatId }) {
           const updatedChat = {
             ...existingChat,
             lastMessage: {
-              content: message.content,
+              senderId: session.user.id,
+              content: message.content || '',
+              imageUrl: message.imageUrl || null,
               timestamp: message.timestamp || new Date().toISOString(),
-              isRead: true,
+              isRead: false,
+              status: message.status || 'sent',
             },
           };
           return [
@@ -130,11 +137,32 @@ export default function Home({ selectedChatId }) {
       });
     };
 
+    // Handle read receipt updates in chat list
+    const handleReadUpdate = (data) => {
+      // data: { readerId, status }
+      setChats(prevChats =>
+        prevChats.map(chat => {
+          if (
+            chat.user._id === data.readerId &&
+            chat.lastMessage?.senderId === session.user.id
+          ) {
+            return {
+              ...chat,
+              lastMessage: { ...chat.lastMessage, status: 'seen', isRead: true },
+            };
+          }
+          return chat;
+        })
+      );
+    };
+
     socket.on('message-sent-full', handleSentMessage);
+    socket.on('messages-read-update', handleReadUpdate);
 
     return () => {
       socket.off('receive-message', handleNewMessage);
       socket.off('message-sent-full', handleSentMessage);
+      socket.off('messages-read-update', handleReadUpdate);
     };
   }, [socket, session?.user?.id, selectedChatId]);
 
@@ -567,8 +595,34 @@ export default function Home({ selectedChatId }) {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-slate-400 truncate">
-                          {chat.lastMessage?.content || 'No messages yet'}
+                        <p className="text-sm text-slate-400 truncate flex items-center gap-1">
+                          {/* Show ticks for messages sent by current user */}
+                          {chat.lastMessage?.senderId === session?.user?.id && (
+                            <span className="flex-shrink-0 inline-flex items-center">
+                              {chat.lastMessage.status === 'seen' ? (
+                                <svg width="16" height="11" viewBox="0 0 18 12" fill="none" className="inline">
+                                  <path d="M1 6L4.5 9.5L12 2" stroke="#60A5FA" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M6 6L9.5 9.5L17 2" stroke="#60A5FA" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              ) : chat.lastMessage.status === 'delivered' ? (
+                                <svg width="16" height="11" viewBox="0 0 18 12" fill="none" className="inline">
+                                  <path d="M1 6L4.5 9.5L12 2" stroke="#94A3B8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M6 6L9.5 9.5L17 2" stroke="#94A3B8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="inline">
+                                  <path d="M1 6L4.5 9.5L11 2" stroke="#94A3B8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </span>
+                          )}
+                          <span className="truncate">
+                            {chat.lastMessage?.imageUrl && !chat.lastMessage?.content
+                              ? '📷 Photo'
+                              : chat.lastMessage?.imageUrl && chat.lastMessage?.content
+                                ? `📷 ${chat.lastMessage.content}`
+                                : chat.lastMessage?.content || 'No messages yet'}
+                          </span>
                         </p>
                       </div>
                       {chat.unreadCount > 0 && (

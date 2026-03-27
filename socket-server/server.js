@@ -53,8 +53,10 @@ const MessageSchema = new mongoose.Schema(
     {
         senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         receiverId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-        content: { type: String, required: true },
+        content: { type: String, default: "" },
+        imageUrl: { type: String, default: null },
         timestamp: { type: Date, default: Date.now },
+        status: { type: String, enum: ["sent", "delivered", "seen"], default: "sent" },
         isRead: { type: Boolean, default: false },
         isDeleted: { type: Boolean, default: false },
     },
@@ -203,6 +205,13 @@ async function startServer() {
                             { new: true }
                         );
                         console.log(`🟢 User ${userId} is online`);
+
+                        // Mark all messages TO this user as "delivered" (they are now online)
+                        await Message.updateMany(
+                            { receiverId: userId, status: "sent" },
+                            { status: "delivered" }
+                        );
+                        console.log(`📩 Marked pending messages to ${userId} as delivered`);
                     } catch (error) {
                         console.error(`❌ Error updating online status for ${userId}:`, error);
                     }
@@ -211,15 +220,21 @@ async function startServer() {
 
             // ── Messaging ─────────────────────────────────────────────
             socket.on("send-message", async (data) => {
-                const { senderId, receiverId, content, timestamp } = data;
-                console.log("💬 Received message:", { senderId, receiverId });
+                const { senderId, receiverId, content, imageUrl, timestamp } = data;
+                console.log("💬 Received message:", { senderId, receiverId, hasImage: !!imageUrl });
 
                 try {
+                    // Check if receiver is online (in a room)
+                    const receiverSockets = await io.in(receiverId).fetchSockets();
+                    const isReceiverOnline = receiverSockets.length > 0;
+
                     const newMessage = new Message({
                         senderId,
                         receiverId,
-                        content,
+                        content: content || "",
+                        imageUrl: imageUrl || null,
                         timestamp: timestamp || new Date(),
+                        status: isReceiverOnline ? "delivered" : "sent",
                     });
                     await newMessage.save();
                     const savedMessage = newMessage.toObject();
@@ -231,7 +246,7 @@ async function startServer() {
 
                     if (senderId) {
                         io.to(senderId).emit("message-sent", {
-                            status: "delivered",
+                            status: savedMessage.status,
                             messageId: savedMessage._id,
                         });
                         // Also emit the full message back to sender for chat list updates
@@ -240,6 +255,35 @@ async function startServer() {
                 } catch (error) {
                     console.error("❌ Error processing message:", error);
                     socket.emit("message-error", { error: "Failed to process message" });
+                }
+            });
+
+            // ── Read Receipts (messages-seen) ─────────────────────────
+            socket.on("messages-seen", async (data) => {
+                const { readerId, senderId } = data;
+                console.log(`👁️ ${readerId} has seen messages from ${senderId}`);
+
+                try {
+                    // Update all unread messages from senderId to readerId
+                    const result = await Message.updateMany(
+                        {
+                            senderId: senderId,
+                            receiverId: readerId,
+                            status: { $ne: "seen" },
+                        },
+                        { status: "seen", isRead: true }
+                    );
+
+                    if (result.modifiedCount > 0) {
+                        // Notify the original sender that their messages have been seen
+                        io.to(senderId).emit("messages-read-update", {
+                            readerId: readerId,
+                            status: "seen",
+                        });
+                        console.log(`✅ Marked ${result.modifiedCount} messages as seen. Notified ${senderId}`);
+                    }
+                } catch (error) {
+                    console.error("❌ Error updating read receipts:", error);
                 }
             });
 

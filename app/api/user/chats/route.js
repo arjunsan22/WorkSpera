@@ -118,9 +118,12 @@ export async function GET(request) {
             },
             lastMessage: msgGroup.lastMessage
               ? {
+                senderId: msgGroup.lastMessage.senderId?.toString(),
                 content: msgGroup.lastMessage.content,
+                imageUrl: msgGroup.lastMessage.imageUrl || null,
                 timestamp: msgGroup.lastMessage.timestamp,
                 isRead: msgGroup.lastMessage.isRead,
+                status: msgGroup.lastMessage.status || "sent",
               }
               : null,
             unreadCount: msgGroup.unreadCount,

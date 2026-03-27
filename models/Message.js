@@ -15,11 +15,20 @@ const MessageSchema = new mongoose.Schema(
     },
     content: {
       type: String,
-      required: true,
+      default: "",
+    },
+    imageUrl: {
+      type: String,
+      default: null,
     },
     timestamp: {
       type: Date,
       default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["sent", "delivered", "seen"],
+      default: "sent",
     },
     isRead: {
       type: Boolean,
