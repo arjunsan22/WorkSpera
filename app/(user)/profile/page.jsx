@@ -276,10 +276,26 @@ export default function ProfilePage() {
     setAiParsedData(null);
 
     try {
+      // Fetch the resume file client-side (browser can access Cloudinary URLs freely)
+      // and send raw base64 to the API to avoid server-side CORS issues with Cloudinary raw assets
+      const fileRes = await fetch(tempUser.resume);
+      if (!fileRes.ok) {
+        throw new Error('Could not load resume file. Please re-upload and try again.');
+      }
+      const blob = await fileRes.blob();
+      const mimeType = blob.type || 'application/pdf';
+
+      const fileData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result); // data URI: "data:...;base64,..."
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
       const res = await fetch('/api/ai/parse-resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeUrl: tempUser.resume }),
+        body: JSON.stringify({ resumeUrl: tempUser.resume, fileData, mimeType }),
       });
 
       const data = await res.json();

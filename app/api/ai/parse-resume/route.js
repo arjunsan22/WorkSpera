@@ -58,30 +58,37 @@ export async function POST(request) {
       );
     }
 
-    const { resumeUrl } = await request.json();
+    const { resumeUrl, fileData, mimeType: clientMimeType } = await request.json();
 
-    if (!resumeUrl) {
+    if (!resumeUrl && !fileData) {
       return NextResponse.json(
-        { error: "Resume URL is required" },
+        { error: "Resume URL or file data is required" },
         { status: 400 }
       );
     }
 
-    // Fetch the resume file from Cloudinary
-    const resumeResponse = await fetch(resumeUrl);
-    if (!resumeResponse.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch resume file" },
-        { status: 400 }
-      );
+    let base64Resume;
+    let mimeType;
+
+    if (fileData) {
+      // Client sent the file as base64 directly — no server-side fetch needed
+      // Strip the data URI prefix if present (e.g. "data:application/pdf;base64,")
+      base64Resume = fileData.includes(",") ? fileData.split(",")[1] : fileData;
+      mimeType = clientMimeType || "application/pdf";
+    } else {
+      // Fallback: fetch from URL (may fail for Cloudinary raw assets due to CORS)
+      const resumeResponse = await fetch(resumeUrl);
+      if (!resumeResponse.ok) {
+        return NextResponse.json(
+          { error: "Failed to fetch resume file" },
+          { status: 400 }
+        );
+      }
+      const resumeBuffer = await resumeResponse.arrayBuffer();
+      base64Resume = Buffer.from(resumeBuffer).toString("base64");
+      const isPdf = resumeUrl.toLowerCase().includes(".pdf");
+      mimeType = isPdf ? "application/pdf" : "application/pdf";
     }
-
-    const resumeBuffer = await resumeResponse.arrayBuffer();
-    const base64Resume = Buffer.from(resumeBuffer).toString("base64");
-
-    // Determine MIME type from URL
-    const isPdf = resumeUrl.toLowerCase().includes(".pdf");
-    const mimeType = isPdf ? "application/pdf" : "application/pdf"; // Gemini works best with PDF
 
     // Use Gemini with file upload
     const model = genAI.getGenerativeModel({
