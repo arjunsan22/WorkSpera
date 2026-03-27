@@ -20,8 +20,9 @@ export async function GET() {
     // Fetch notifications with sender details
     const notifications = await Notification.find({ recipient: userId })
       .sort({ createdAt: -1 })
-      .limit(20) // last 20
-      .populate("sender", "name username profileImage");
+      .limit(30) // last 30
+      .populate("sender", "name username profileImage")
+      .populate("post", "image caption");
 
     // Mark as read (optional: do this on click instead)
     await Notification.updateMany(

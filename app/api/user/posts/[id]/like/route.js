@@ -2,6 +2,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Post from "@/models/Post";
+import Notification from "@/models/Notification";
 import connectDB from "@/lib/connectDB";
 
 export async function POST(request, { params }) {
@@ -38,6 +39,16 @@ export async function POST(request, { params }) {
     } else {
       // New reaction
       post.likes.push({ user: userId, reactionType });
+      
+      // Create notification
+      if (post.user.toString() !== userId) {
+        await Notification.create({
+          recipient: post.user,
+          sender: userId,
+          type: 'like',
+          post: postId,
+        });
+      }
     }
 
     await post.save();

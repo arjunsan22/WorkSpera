@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiArrowLeft, FiGrid, FiImage, FiHeart, FiMessageCircle, FiCalendar, FiUserPlus, FiCheck, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUser } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import Link from 'next/link';
+import NotificationModal from "@/app/components/user/NotificationModal";
 
 export default function UserProfilePage() {
     const { id } = useParams();
@@ -603,6 +604,14 @@ export default function UserProfilePage() {
                     </motion.div>
                 </div>
             </div>
+            
+            <NotificationModal
+                showNotifications={showNotifications}
+                setShowNotifications={setShowNotifications}
+                notifications={notifications}
+                setNotifications={setNotifications}
+                setUnreadCount={setUnreadCount}
+            />
         </div>
     );
 }

@@ -12,6 +12,7 @@ import StoryUploader from "@/app/components/stories/StoryUploader";
 import MyStoriesManager from "@/app/components/stories/MyStoriesManager";
 import ChatBot from "@/app/components/user/ChatBot";
 import ReactionModal from "@/app/components/user/ReactionModal";
+import NotificationModal from "@/app/components/user/NotificationModal";
 import Swal from 'sweetalert2';
 
 export default function ProfilePage() {
@@ -2527,6 +2528,14 @@ export default function ProfilePage() {
         isOpen={showReactionModal} 
         onClose={() => setShowReactionModal(false)} 
         likes={reactionModalLikes} 
+      />
+
+      <NotificationModal
+        showNotifications={showNotifications}
+        setShowNotifications={setShowNotifications}
+        notifications={notifications}
+        setNotifications={setNotifications}
+        setUnreadCount={setUnreadCount}
       />
     </div>
   );

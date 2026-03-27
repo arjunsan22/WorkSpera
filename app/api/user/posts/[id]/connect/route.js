@@ -66,6 +66,7 @@ export async function POST(req, { params }) {
       recipient: post.user._id,
       sender: userId,
       type: "connection_request",
+      post: id,
       read: false,
     });
 
