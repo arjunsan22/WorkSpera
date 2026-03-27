@@ -53,7 +53,7 @@ export async function PUT(request, { params }) {
 
     const body = await request.json();
     console.log("PUT /api/user/profile - Body:", body); // 🔍 Debug Log
-    const { name, username, bio, profileImage, resume, resumeName, skills, education, links, profile } = body;
+    const { name, username, bio, profileImage, skills, education, links, profile, resume, resumeName } = body;
     // Basic validation
     if (username && !/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
       return Response.json(
@@ -69,12 +69,12 @@ export async function PUT(request, { params }) {
         username,
         bio,
         profileImage,
-        resume,
-        resumeName,
         skills,
         education,
         links,
-        profile
+        profile,
+        resume,
+        resumeName
       },
       { new: true, runValidators: true } // Return updated doc and run schema validators
     ).select("-password"); // Exclude password from response

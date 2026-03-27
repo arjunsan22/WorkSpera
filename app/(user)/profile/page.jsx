@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiLoader, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiFileText, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUserPlus, FiBookmark } from 'react-icons/fi';
+import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUserPlus, FiBookmark, FiUploadCloud, FiFileText, FiCpu, FiCheck, FiDownload, FiZap } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import Link from 'next/link';
 import StoryUploader from "@/app/components/stories/StoryUploader";
@@ -43,12 +43,18 @@ export default function ProfilePage() {
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isResumeModalOpen, setIsResumeModalOpen] = useState(false); // ✅ NEW
+
   const [profileTab, setProfileTab] = useState('posts'); // 'posts' or 'saved'
   const [savedPosts, setSavedPosts] = useState([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [showReactionModal, setShowReactionModal] = useState(false);
   const [reactionModalLikes, setReactionModalLikes] = useState([]);
+
+  // Resume & AI parsing states
+  const [isResumeUploading, setIsResumeUploading] = useState(false);
+  const [isAIParsing, setIsAIParsing] = useState(false);
+  const [aiParsedData, setAiParsedData] = useState(null);
+  const [resumeUploadProgress, setResumeUploadProgress] = useState('');
   
   // Poll creation states
   const [isPollEnabled, setIsPollEnabled] = useState(false);
@@ -154,21 +160,152 @@ export default function ProfilePage() {
         username: user.username,
         bio: user.bio,
         profileImage: user.profileImage,
-        resume: user.resume,
-        resumeName: user.resumeName,
         profile: user.profile || "",
         skills: user.skills || [],
         education: user.education?.map(edu => ({
           ...edu,
           startDate: edu.startDate || '',
           endDate: edu.endDate || '',
-          // cleanup legacy fields
           startYear: undefined,
           endYear: undefined
         })) || [],
-        links: user.links || []
+        links: user.links || [],
+        resume: user.resume || '',
+        resumeName: user.resumeName || '',
       });
+      setAiParsedData(null);
       setIsEditProfileModalOpen(true);
+    }
+  };
+
+  // Resume upload handler
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      alert('Only PDF, DOC, and DOCX files are allowed.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB.');
+      return;
+    }
+
+    setIsResumeUploading(true);
+    setResumeUploadProgress('Uploading resume...');
+
+    try {
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      const res = await fetch('/api/upload/resume', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const responseText = await res.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        throw new Error('Server returned invalid response');
+      }
+
+      if (!res.ok) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      setTempUser(prev => ({
+        ...prev,
+        resume: result.url,
+        resumeName: result.originalName,
+      }));
+      setResumeUploadProgress('Resume uploaded successfully!');
+      setAiParsedData(null); // Reset any previous AI data
+    } catch (error) {
+      console.error('Resume upload error:', error);
+      setResumeUploadProgress('');
+      alert(`Resume upload failed: ${error.message}`);
+    } finally {
+      setIsResumeUploading(false);
+    }
+  };
+
+  // Remove resume
+  const handleRemoveResume = () => {
+    setTempUser(prev => ({ ...prev, resume: '', resumeName: '' }));
+    setAiParsedData(null);
+    setResumeUploadProgress('');
+  };
+
+  // AI Parse resume
+  const handleAIParse = async () => {
+    if (!tempUser.resume) {
+      alert('Please upload a resume first.');
+      return;
+    }
+
+    setIsAIParsing(true);
+    setAiParsedData(null);
+
+    try {
+      const res = await fetch('/api/ai/parse-resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeUrl: tempUser.resume }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to parse resume');
+      }
+
+      setAiParsedData(data.data);
+    } catch (error) {
+      console.error('AI parse error:', error);
+      alert(`AI parsing failed: ${error.message}`);
+    } finally {
+      setIsAIParsing(false);
+    }
+  };
+
+  // Apply AI parsed data to form
+  const applyAIData = (fieldsToApply = 'all') => {
+    if (!aiParsedData) return;
+
+    setTempUser(prev => {
+      const updates = { ...prev };
+
+      if (fieldsToApply === 'all' || fieldsToApply === 'skills') {
+        updates.skills = aiParsedData.skills;
+      }
+      if (fieldsToApply === 'all' || fieldsToApply === 'bio') {
+        updates.bio = aiParsedData.bio;
+      }
+      if (fieldsToApply === 'all' || fieldsToApply === 'profile') {
+        updates.profile = aiParsedData.profile;
+      }
+      if (fieldsToApply === 'all' || fieldsToApply === 'education') {
+        updates.education = aiParsedData.education;
+      }
+      if (fieldsToApply === 'all' || fieldsToApply === 'links') {
+        updates.links = aiParsedData.links;
+      }
+
+      return updates;
+    });
+
+    if (fieldsToApply === 'all') {
+      setAiParsedData(null); // Clear after full apply
     }
   };
 
@@ -528,40 +665,7 @@ export default function ProfilePage() {
     }
   };
 
-  // ✅ NEW: Handle Resume Upload
-  const handleResumeUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
 
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("/api/upload/resume", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error("Resume upload failed");
-
-      const data = await response.json();
-      setTempUser((prev) => ({
-        ...prev,
-        resume: data.url,
-        resumeName: data.originalFilename,
-      }));
-    } catch (error) {
-      console.error("Error uploading resume:", error);
-      alert("Failed to upload resume");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const removeResume = () => {
-    setTempUser((prev) => ({ ...prev, resume: "", resumeName: "" }));
-  };
 
   // ✅ NEW: Function to get image preview URL for File objects (for display in UI)
   const getPreviewUrl = (image) => {
@@ -891,15 +995,7 @@ export default function ProfilePage() {
                       Edit Profile
                     </button>
 
-                    {user.resume && (
-                      <button
-                        onClick={() => setIsResumeModalOpen(true)}
-                        className="px-5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg border border-slate-700 transition-all flex items-center gap-2"
-                      >
-                        <FiFileText className="w-4 h-4" />
-                        Resume
-                      </button>
-                    )}
+
                   </div>
                 </div>
 
@@ -982,6 +1078,30 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-8">
+              {/* Resume */}
+              {user.resume && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Resume</h3>
+                  <a
+                    href={user.resume}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-3 px-4 py-3 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all group"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                      <FiFileText className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-200 text-sm font-medium group-hover:text-indigo-400 transition-colors">
+                        {user.resumeName || 'Resume'}
+                      </p>
+                      <p className="text-slate-500 text-xs">Click to view / download</p>
+                    </div>
+                    <FiDownload className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors ml-2" />
+                  </a>
+                </div>
+              )}
+
               {/* Summary */}
               {user.profile && (
                 <div>
@@ -1390,37 +1510,198 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Resume Upload Section */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Resume (PDF/DOC)</label>
-                    <div className="flex items-center gap-4">
-                      {tempUser.resume ? (
-                        <div className="flex items-center gap-3 bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-600/50">
-                          <FiFileText className="w-5 h-5 text-indigo-400" />
-                          <a href={tempUser.resume} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline max-w-[150px] truncate block">
-                            {tempUser.resumeName || "View Resume"}
-                          </a>
-                          <button
-                            type="button"
-                            onClick={removeResume}
-                            className="text-red-400 hover:text-red-300 ml-2"
-                          >
-                            <FiX className="w-4 h-4" />
-                          </button>
+                  <div className="pt-4 border-t border-slate-700/50">
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                      <FiFileText className="w-5 h-5 text-indigo-400" />
+                      Resume & AI Profile Builder
+                    </h3>
+
+                    {/* Current Resume Display */}
+                    {tempUser.resume ? (
+                      <div className="mb-4 p-4 bg-slate-700/30 rounded-xl border border-slate-700/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                              <FiFileText className="w-5 h-5 text-red-400" />
+                            </div>
+                            <div>
+                              <p className="text-slate-200 text-sm font-medium">{tempUser.resumeName || 'Resume'}</p>
+                              <p className="text-green-400 text-xs flex items-center gap-1">
+                                <FiCheck className="w-3 h-3" /> Uploaded
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={tempUser.resume}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-700/50 rounded-lg transition-all"
+                              title="View resume"
+                            >
+                              <FiDownload className="w-4 h-4" />
+                            </a>
+                            <button
+                              onClick={handleRemoveResume}
+                              className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                              title="Remove resume"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      ) : (
-                        <label className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2 border border-slate-600 border-dashed w-full justify-center">
-                          {isUploading ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiPlus className="w-4 h-4" />}
-                          Upload Resume
+
+                        {/* AI Parse Button */}
+                        <button
+                          onClick={handleAIParse}
+                          disabled={isAIParsing}
+                          className="mt-3 w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 font-medium"
+                        >
+                          {isAIParsing ? (
+                            <>
+                              <FiRefreshCw className="w-4 h-4 animate-spin" />
+                              Parsing with AI...
+                            </>
+                          ) : (
+                            <>
+                              <FiCpu className="w-4 h-4" />
+                              🤖 Parse Resume with AI
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      /* Upload Area */
+                      <div className="mb-4">
+                        <label className="flex flex-col items-center justify-center p-6 bg-slate-700/20 hover:bg-slate-700/40 border-2 border-dashed border-slate-600/50 hover:border-indigo-500/50 rounded-xl cursor-pointer transition-all group">
+                          {isResumeUploading ? (
+                            <>
+                              <FiRefreshCw className="w-8 h-8 text-indigo-400 animate-spin mb-2" />
+                              <p className="text-slate-300 text-sm">{resumeUploadProgress || 'Uploading...'}</p>
+                            </>
+                          ) : (
+                            <>
+                              <FiUploadCloud className="w-8 h-8 text-slate-400 group-hover:text-indigo-400 mb-2 transition-colors" />
+                              <p className="text-slate-300 text-sm font-medium">Upload Resume</p>
+                              <p className="text-slate-500 text-xs mt-1">PDF, DOC, DOCX (max 5MB)</p>
+                            </>
+                          )}
                           <input
                             type="file"
-                            accept=".pdf,.doc,.docx"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             onChange={handleResumeUpload}
+                            disabled={isResumeUploading}
                             className="hidden"
-                            disabled={isUploading}
                           />
                         </label>
-                      )}
-                    </div>
+                      </div>
+                    )}
+
+                    {/* AI Parsed Data Preview */}
+                    {aiParsedData && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-4 p-4 bg-gradient-to-br from-purple-900/20 to-indigo-900/20 rounded-xl border border-purple-500/30"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-white font-semibold flex items-center gap-2">
+                            <FiZap className="w-4 h-4 text-yellow-400" />
+                            AI Extracted Data
+                          </h4>
+                          <button
+                            onClick={() => applyAIData('all')}
+                            className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs rounded-lg transition-all flex items-center gap-1 font-medium"
+                          >
+                            <FiCheck className="w-3 h-3" />
+                            Apply All
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {/* Bio Preview */}
+                          {aiParsedData.bio && (
+                            <div className="p-3 bg-slate-800/50 rounded-lg">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-slate-400 uppercase">Bio</span>
+                                <button onClick={() => applyAIData('bio')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                                  <FiCheck className="w-3 h-3" /> Apply
+                                </button>
+                              </div>
+                              <p className="text-slate-300 text-sm">{aiParsedData.bio}</p>
+                            </div>
+                          )}
+
+                          {/* Profile/Summary Preview */}
+                          {aiParsedData.profile && (
+                            <div className="p-3 bg-slate-800/50 rounded-lg">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-slate-400 uppercase">Professional Summary</span>
+                                <button onClick={() => applyAIData('profile')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                                  <FiCheck className="w-3 h-3" /> Apply
+                                </button>
+                              </div>
+                              <p className="text-slate-300 text-sm">{aiParsedData.profile}</p>
+                            </div>
+                          )}
+
+                          {/* Skills Preview */}
+                          {aiParsedData.skills?.length > 0 && (
+                            <div className="p-3 bg-slate-800/50 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-slate-400 uppercase">Skills ({aiParsedData.skills.length})</span>
+                                <button onClick={() => applyAIData('skills')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                                  <FiCheck className="w-3 h-3" /> Apply
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {aiParsedData.skills.map((skill, idx) => (
+                                  <span key={idx} className="px-2 py-0.5 bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 rounded text-xs">
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Education Preview */}
+                          {aiParsedData.education?.length > 0 && (
+                            <div className="p-3 bg-slate-800/50 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-slate-400 uppercase">Education ({aiParsedData.education.length})</span>
+                                <button onClick={() => applyAIData('education')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                                  <FiCheck className="w-3 h-3" /> Apply
+                                </button>
+                              </div>
+                              {aiParsedData.education.map((edu, idx) => (
+                                <div key={idx} className="text-sm mb-2 last:mb-0">
+                                  <p className="text-slate-200 font-medium">{edu.institution}</p>
+                                  <p className="text-slate-400 text-xs">{edu.degree}{edu.fieldOfStudy ? ` — ${edu.fieldOfStudy}` : ''}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Links Preview */}
+                          {aiParsedData.links?.length > 0 && (
+                            <div className="p-3 bg-slate-800/50 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-slate-400 uppercase">Links ({aiParsedData.links.length})</span>
+                                <button onClick={() => applyAIData('links')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                                  <FiCheck className="w-3 h-3" /> Apply
+                                </button>
+                              </div>
+                              {aiParsedData.links.map((link, idx) => (
+                                <div key={idx} className="text-sm mb-1 last:mb-0">
+                                  <span className="text-indigo-400">{link.label}:</span>{' '}
+                                  <span className="text-slate-400 text-xs break-all">{link.url}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
 
                   {/* Professional Fields */}
@@ -2150,58 +2431,7 @@ export default function ProfilePage() {
           )}
         </AnimatePresence>
 
-        {/* ✅ NEW: Resume Preview Modal */}
-        <AnimatePresence>
-          {isResumeModalOpen && user?.resume && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
-              onClick={() => setIsResumeModalOpen(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col"
-              >
-                <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/50 rounded-t-2xl">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <FiFileText className="w-5 h-5 text-indigo-400" />
-                    {user.resumeName || "Resume"}
-                  </h2>
-                  <button
-                    onClick={() => setIsResumeModalOpen(false)}
-                    className="p-2 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-colors"
-                  >
-                    <FiX className="w-6 h-6" />
-                  </button>
-                </div>
 
-                <div className="bg-slate-800 px-4 py-2 flex justify-end">
-                  <a
-                    href={user.resume}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 hover:underline"
-                  >
-                    <FiFileText className="w-4 h-4" /> Open Original File
-                  </a>
-                </div>
-                <div className="flex-1 bg-slate-800 p-1 relative overflow-hidden">
-                  <iframe
-                    src={`https://docs.google.com/gview?url=${encodeURIComponent(user.resume)}&embedded=true`}
-                    className="w-full h-full rounded-b-xl bg-white"
-                    title="Resume Preview"
-                    style={{ minHeight: '500px' }}
-                  />
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* AI Chatbot */}
