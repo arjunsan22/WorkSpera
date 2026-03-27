@@ -57,6 +57,7 @@ export default function ProfilePage() {
   const [isAIParsing, setIsAIParsing] = useState(false);
   const [aiParsedData, setAiParsedData] = useState(null);
   const [resumeUploadProgress, setResumeUploadProgress] = useState('');
+  const [resumeFile, setResumeFile] = useState(null); // holds the original File object for AI parsing
   
   // Poll creation states
   const [isPollEnabled, setIsPollEnabled] = useState(false);
@@ -193,6 +194,7 @@ export default function ProfilePage() {
         resumeName: user.resumeName || '',
       });
       setAiParsedData(null);
+      setResumeFile(null); // clear any previously held file when reopening modal
       setIsEditProfileModalOpen(true);
     }
   };
@@ -247,6 +249,7 @@ export default function ProfilePage() {
         resume: result.url,
         resumeName: result.originalName,
       }));
+      setResumeFile(file); // keep the original File object so AI parse doesn't need to re-fetch
       setResumeUploadProgress('Resume uploaded successfully!');
       setAiParsedData(null); // Reset any previous AI data
     } catch (error) {
@@ -262,6 +265,7 @@ export default function ProfilePage() {
   const handleRemoveResume = () => {
     setTempUser(prev => ({ ...prev, resume: '', resumeName: '' }));
     setAiParsedData(null);
+    setResumeFile(null);
     setResumeUploadProgress('');
   };
 
@@ -276,21 +280,23 @@ export default function ProfilePage() {
     setAiParsedData(null);
 
     try {
-      // Fetch the resume file client-side (browser can access Cloudinary URLs freely)
-      // and send raw base64 to the API to avoid server-side CORS issues with Cloudinary raw assets
-      const fileRes = await fetch(tempUser.resume);
-      if (!fileRes.ok) {
-        throw new Error('Could not load resume file. Please re-upload and try again.');
-      }
-      const blob = await fileRes.blob();
-      const mimeType = blob.type || 'application/pdf';
+      let fileData;
+      let mimeType;
 
-      const fileData = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result); // data URI: "data:...;base64,..."
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      if (resumeFile) {
+        // Best path: use the File object held in memory — zero network requests
+        mimeType = resumeFile.type || 'application/pdf';
+        fileData = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result); // "data:<mime>;base64,..."
+          reader.onerror = reject;
+          reader.readAsDataURL(resumeFile);
+        });
+      } else {
+        // Fallback for resumes already saved before this session
+        // Use a proxy API route to fetch the Cloudinary file server-side with auth
+        throw new Error('Please re-upload your resume and then click Parse with AI.');
+      }
 
       const res = await fetch('/api/ai/parse-resume', {
         method: 'POST',

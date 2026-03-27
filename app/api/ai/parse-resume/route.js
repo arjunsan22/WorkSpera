@@ -3,6 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import cloudinary from "@/lib/cloudinary";
+
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -76,18 +78,44 @@ export async function POST(request) {
       base64Resume = fileData.includes(",") ? fileData.split(",")[1] : fileData;
       mimeType = clientMimeType || "application/pdf";
     } else {
-      // Fallback: fetch from URL (may fail for Cloudinary raw assets due to CORS)
-      const resumeResponse = await fetch(resumeUrl);
-      if (!resumeResponse.ok) {
+      // Fallback for already-saved resumes (no fileData in payload).
+      // Extract the public_id from the Cloudinary URL and generate a signed download URL
+      // so the server can fetch the raw asset without CORS issues.
+      try {
+        // Cloudinary raw URL pattern: .../raw/upload/v<ver>/<folder>/<public_id>
+        const urlObj = new URL(resumeUrl);
+        const pathParts = urlObj.pathname.split("/");
+        // Find index of "upload" and take everything after the version segment
+        const uploadIdx = pathParts.indexOf("upload");
+        // pathParts after "upload": ["v<version>", "folder", "filename.ext"] or ["folder", "filename.ext"]
+        let publicIdParts = pathParts.slice(uploadIdx + 1);
+        // Remove version segment if present (starts with 'v' followed by digits)
+        if (/^v\d+$/.test(publicIdParts[0])) {
+          publicIdParts = publicIdParts.slice(1);
+        }
+        const publicId = publicIdParts.join("/");
+        const extension = publicId.split(".").pop()?.toLowerCase() || "pdf";
+        mimeType = extension === "pdf" ? "application/pdf" : "application/octet-stream";
+
+        // Generate a short-lived signed URL (60 seconds is enough)
+        const signedUrl = cloudinary.utils.private_download_url(publicId, extension, {
+          resource_type: "raw",
+          expires_at: Math.floor(Date.now() / 1000) + 60,
+        });
+
+        const resumeResponse = await fetch(signedUrl);
+        if (!resumeResponse.ok) {
+          throw new Error(`Cloudinary fetch failed: ${resumeResponse.status}`);
+        }
+        const resumeBuffer = await resumeResponse.arrayBuffer();
+        base64Resume = Buffer.from(resumeBuffer).toString("base64");
+      } catch (fetchErr) {
+        console.error("Fallback Cloudinary fetch error:", fetchErr);
         return NextResponse.json(
-          { error: "Failed to fetch resume file" },
+          { error: "Could not retrieve resume. Please re-upload and try again." },
           { status: 400 }
         );
       }
-      const resumeBuffer = await resumeResponse.arrayBuffer();
-      base64Resume = Buffer.from(resumeBuffer).toString("base64");
-      const isPdf = resumeUrl.toLowerCase().includes(".pdf");
-      mimeType = isPdf ? "application/pdf" : "application/pdf";
     }
 
     // Use Gemini with file upload
