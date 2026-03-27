@@ -5,13 +5,14 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUserPlus, FiBookmark, FiUploadCloud, FiFileText, FiCpu, FiCheck, FiDownload, FiZap } from 'react-icons/fi';
+import { FiEdit3, FiRefreshCw, FiImage, FiArrowLeft, FiUser, FiX, FiCamera, FiTrash2, FiPlus, FiHeart, FiMessageCircle, FiCalendar, FiGrid, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUserPlus, FiBookmark, FiUploadCloud, FiFileText, FiCpu, FiCheck, FiDownload, FiZap, FiLoader } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import Link from 'next/link';
 import StoryUploader from "@/app/components/stories/StoryUploader";
 import MyStoriesManager from "@/app/components/stories/MyStoriesManager";
 import ChatBot from "@/app/components/user/ChatBot";
 import ReactionModal from "@/app/components/user/ReactionModal";
+import Swal from 'sweetalert2';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -59,6 +60,23 @@ export default function ProfilePage() {
   // Poll creation states
   const [isPollEnabled, setIsPollEnabled] = useState(false);
   const [pollData, setPollData] = useState({ question: '', options: [{ text: '' }, { text: '' }] });
+
+  // Custom Toast helper
+  const showToast = (message, type = 'error') => {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+      icon: type,
+      title: message,
+      background: '#1e293b',
+      color: '#fff',
+      customClass: { popup: 'rounded-xl border border-slate-700/50' }
+    });
+  };
+
   useEffect(() => {
     if (session?.user?.id) {
       fetchProfileData();
@@ -190,12 +208,12 @@ export default function ProfilePage() {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      alert('Only PDF, DOC, and DOCX files are allowed.');
+      showToast('Only PDF, DOC, and DOCX files are allowed.');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB.');
+      showToast('File size must be less than 5MB.');
       return;
     }
 
@@ -233,7 +251,7 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Resume upload error:', error);
       setResumeUploadProgress('');
-      alert(`Resume upload failed: ${error.message}`);
+      showToast(`Resume upload failed: ${error.message}`);
     } finally {
       setIsResumeUploading(false);
     }
@@ -249,7 +267,7 @@ export default function ProfilePage() {
   // AI Parse resume
   const handleAIParse = async () => {
     if (!tempUser.resume) {
-      alert('Please upload a resume first.');
+      showToast('Please upload a resume first.');
       return;
     }
 
@@ -272,7 +290,7 @@ export default function ProfilePage() {
       setAiParsedData(data.data);
     } catch (error) {
       console.error('AI parse error:', error);
-      alert(`AI parsing failed: ${error.message}`);
+      showToast(`AI parsing failed: ${error.message}`);
     } finally {
       setIsAIParsing(false);
     }
@@ -306,6 +324,27 @@ export default function ProfilePage() {
 
     if (fieldsToApply === 'all') {
       setAiParsedData(null); // Clear after full apply
+    }
+  };
+
+  // Download resume as proper PDF
+  const handleDownloadResume = async (url, filename) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      // Force PDF mime type
+      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+      const downloadUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename || 'resume.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      showToast('Failed to download resume. Please try again.');
     }
   };
 
@@ -390,10 +429,10 @@ export default function ProfilePage() {
         }
       } else {
         const data = await res.json();
-        alert(data.message || 'Action failed');
+        showToast(data.message || 'Action failed');
       }
     } catch (err) {
-      alert('Network error');
+      showToast('Network error');
     }
   };
 
@@ -411,8 +450,10 @@ export default function ProfilePage() {
       const data = await response.json();
       setUser(data.user);
       closeEditProfileModal();
+      showToast('Profile updated successfully!', 'success');
     } catch (error) {
       console.error('Error updating profile:', error);
+      showToast('Failed to update profile');
     }
   };
 
@@ -421,7 +462,7 @@ export default function ProfilePage() {
     const hasPoll = isPollEnabled && pollData.question.trim() && validPollOptions.length >= 2;
 
     if (!tempPost.caption.trim() && tempPost.images.length === 0 && !hasPoll) {
-      alert('Please add a caption, at least one image, or a valid poll (question + 2 options).');
+      showToast('Please add a caption, at least one image, or a valid poll (question + 2 options).');
       return;
     }
 
@@ -472,7 +513,12 @@ export default function ProfilePage() {
       });
 
       if (!postResponse.ok) {
-        throw new Error('Failed to create post');
+        let errorMsg = 'Failed to create post';
+        try {
+          const errorData = await postResponse.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
 
       const result = await postResponse.json();
@@ -480,6 +526,7 @@ export default function ProfilePage() {
       closeEditPostsModal();
     } catch (error) {
       console.error('Error adding post:', error);
+      showToast(error.message || 'Failed to add post. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -487,7 +534,7 @@ export default function ProfilePage() {
 
   const handleUpdatePost = async (postId) => {
     if (!selectedPostForEdit.caption.trim() && selectedPostForEdit.images.length === 0) {
-      alert('Please add a caption or at least one image.');
+      showToast('Please add a caption or at least one image.');
       return;
     }
 
@@ -540,14 +587,29 @@ export default function ProfilePage() {
       closeEditPostsModal();
     } catch (error) {
       console.error('Error updating post:', error);
-      alert('Failed to update post. Please try again.');
+      showToast('Failed to update post. Please try again.');
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleDeletePost = async (postId) => {
-    if (!confirm('Are you sure you want to delete this post?')) return;
+    const result = await Swal.fire({
+      title: 'Delete this post?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#4b5563',
+      confirmButtonText: 'Yes, delete it',
+      background: '#1e293b',
+      color: '#fff',
+      customClass: {
+        popup: 'rounded-2xl border border-slate-700/50',
+      }
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       const response = await fetch(`/api/user/posts/${postId}`, {
@@ -560,8 +622,37 @@ export default function ProfilePage() {
       if (selectedPostForEdit && selectedPostForEdit._id === postId) {
         setSelectedPostForEdit(null);
       }
+
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        icon: 'success',
+        title: 'Post deleted successfully',
+        background: '#1e293b',
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-xl border border-slate-700/50',
+        }
+      });
     } catch (error) {
       console.error('Error deleting post:', error);
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        icon: 'error',
+        title: 'Failed to delete post',
+        background: '#1e293b',
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-xl border border-slate-700/50',
+        }
+      });
     }
   };
 
@@ -618,7 +709,7 @@ export default function ProfilePage() {
       return result.url;
     } catch (error) {
       console.error('Image upload error:', error);
-      alert(`Image upload failed: ${error.message}`);
+      showToast(`Image upload failed: ${error.message}`);
       return null;
     }
   };
@@ -718,11 +809,11 @@ export default function ProfilePage() {
         setNewComment('');
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to post comment');
+        showToast(data.error || 'Failed to post comment');
       }
     } catch (err) {
       console.error('Comment error:', err);
-      alert('Network error');
+      showToast('Network error');
     } finally {
       setIsSubmitting(false);
     }
@@ -1082,23 +1173,21 @@ export default function ProfilePage() {
               {user.resume && (
                 <div>
                   <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Resume</h3>
-                  <a
-                    href={user.resume}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-3 px-4 py-3 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all group"
+                  <button
+                    onClick={() => handleDownloadResume(user.resume, user.resumeName)}
+                    className="inline-flex items-center gap-3 px-4 py-3 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all group cursor-pointer"
                   >
                     <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
                       <FiFileText className="w-5 h-5 text-red-400" />
                     </div>
-                    <div>
+                    <div className="text-left">
                       <p className="text-slate-200 text-sm font-medium group-hover:text-indigo-400 transition-colors">
                         {user.resumeName || 'Resume'}
                       </p>
-                      <p className="text-slate-500 text-xs">Click to view / download</p>
+                      <p className="text-slate-500 text-xs">Click to download</p>
                     </div>
                     <FiDownload className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors ml-2" />
-                  </a>
+                  </button>
                 </div>
               )}
 
@@ -1532,15 +1621,13 @@ export default function ProfilePage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <a
-                              href={tempUser.resume}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => handleDownloadResume(tempUser.resume, tempUser.resumeName)}
                               className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-700/50 rounded-lg transition-all"
-                              title="View resume"
+                              title="Download resume"
                             >
                               <FiDownload className="w-4 h-4" />
-                            </a>
+                            </button>
                             <button
                               onClick={handleRemoveResume}
                               className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"

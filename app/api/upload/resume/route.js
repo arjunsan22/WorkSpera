@@ -59,12 +59,15 @@ export async function POST(request) {
     const buffer = Buffer.from(bytes);
     const base64Data = `data:${resume.type};base64,${buffer.toString("base64")}`;
 
+    // Extract file extension from original filename
+    const fileExtension = resume.name.split('.').pop()?.toLowerCase() || 'pdf';
+
     // Upload to Cloudinary with resource_type: "raw" for documents
+    // Include extension in public_id so the URL ends with .pdf/.doc/.docx
     const result = await cloudinary.uploader.upload(base64Data, {
       resource_type: "raw",
       folder: "resumes",
-      // Use original filename (without extension) as public_id prefix
-      public_id: `resume_${Date.now()}`,
+      public_id: `resume_${Date.now()}.${fileExtension}`,
     });
 
     return NextResponse.json({
