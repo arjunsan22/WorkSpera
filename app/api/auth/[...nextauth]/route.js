@@ -39,7 +39,7 @@ export const authOptions = {
           }
 
           if (user.isBlocked) {
-            throw new Error("Your account has been blocked by an administrator. Please contact support.");
+            throw new Error("Your account has been blocked by an administrator for violating community guidelines. Please contact support.");
           }
 
           if (!user.password) {
@@ -97,6 +97,7 @@ export const authOptions = {
             // Block check for existing users signing in via Google
             if (existingUser.isBlocked) {
               return "/login?error=Blocked"; // Redirect to login with error
+              throw new Error("Your account has been blocked by an administrator for violating community guidelines. Please contact support.");
             }
 
             // Update profile image from Google if user still has default
@@ -134,16 +135,16 @@ export const authOptions = {
       try {
         await connectDB();
         if (token.id) {
-            const dbUser = await User.findById(token.id).select("role username profileImage isBlocked");
-            if (dbUser) {
-                // If user was newly blocked while active session, clear their session token effectively
-                if (dbUser.isBlocked) {
-                    return {}; 
-                }
-                token.role = dbUser.role;
-                token.username = dbUser.username;
-                token.image = dbUser.profileImage;
+          const dbUser = await User.findById(token.id).select("role username profileImage isBlocked");
+          if (dbUser) {
+            // If user was newly blocked while active session, clear their session token effectively
+            if (dbUser.isBlocked) {
+              return {};
             }
+            token.role = dbUser.role;
+            token.username = dbUser.username;
+            token.image = dbUser.profileImage;
+          }
         }
       } catch (error) {
         console.error("Error fetching user in JWT callback:", error);
