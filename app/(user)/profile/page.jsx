@@ -905,14 +905,6 @@ export default function ProfilePage() {
           >
             <FiMenu className="w-6 h-6" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 flex items-center justify-center">
-              <img src="/favicon.ico" alt="WorkSpera" className="w-5 h-5 object-contain drop-shadow-sm" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-              WorkSpera
-            </span>
-          </div>
           <button
             onClick={() => router.push('/feeds')}
             className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all"
