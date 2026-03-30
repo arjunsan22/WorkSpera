@@ -8,10 +8,11 @@ export const useWebRTC = (socket, remoteUserId) => {
   const [isReceivingCall, setIsReceivingCall] = useState(false);
   const [isInCall, setIsInCall] = useState(false);
   const [callerInfo, setCallerInfo] = useState(null); // { socketId, userId, name, profileImage }
+  const [targetUser, setTargetUser] = useState(null);
 
   const peerConnection = useRef(null);
   const pendingOffer = useRef(null);
-  const remoteUserIdRef = useRef(remoteUserId);
+  const remoteUserIdRef = useRef(remoteUserId || null);
   const localStreamRef = useRef(null);
 
   // Queue for ICE candidates that arrive before remote description is set
@@ -157,6 +158,7 @@ export const useWebRTC = (socket, remoteUserId) => {
       setCallerInfo(null);
       // Stop the local stream when call ends
       stopLocalStream();
+      setTargetUser(null);
     };
 
     const handleCallRejected = () => {
@@ -171,6 +173,7 @@ export const useWebRTC = (socket, remoteUserId) => {
       setIsInCall(false);
       setCallerInfo(null);
       stopLocalStream();
+      setTargetUser(null);
     };
 
     // Attach listeners
@@ -231,13 +234,15 @@ export const useWebRTC = (socket, remoteUserId) => {
   // Initiate a call — acquires media first, then creates the offer
   // callerName and callerImage are passed so the receiver knows who is calling
   const callUser = useCallback(
-    async (userId, callerName, callerImage) => {
+    async (userId, callerName, callerImage, destinationName) => {
       if (!socket) {
         console.warn("Cannot call: missing socket");
         return;
       }
 
       setIsCalling(true);
+      setTargetUser({ id: userId, name: destinationName || 'friend' });
+      remoteUserIdRef.current = userId;
       iceCandidatesQueue.current = []; // Reset queue
 
       // Acquire media on demand
@@ -287,6 +292,7 @@ export const useWebRTC = (socket, remoteUserId) => {
     // Acquire media on demand
     const stream = await getLocalStream();
 
+    remoteUserIdRef.current = from;
     const pc = createPeerConnection(from);
     peerConnection.current = pc;
 
@@ -350,6 +356,7 @@ export const useWebRTC = (socket, remoteUserId) => {
     setIsInCall(false);
     setCallerInfo(null);
     pendingOffer.current = null;
+    setTargetUser(null);
   }, [socket, callerInfo, stopLocalStream]);
 
   return {
@@ -359,6 +366,7 @@ export const useWebRTC = (socket, remoteUserId) => {
     isReceivingCall,
     isInCall,
     callerInfo,
+    targetUser,
     callUser,
     hangUp,
     acceptCall,

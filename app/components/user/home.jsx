@@ -11,7 +11,7 @@ import {
 import { FaWhatsapp } from "react-icons/fa";
 import ChatWindow from "./ChatWindow";
 import NotificationModal from "@/app/components/user/NotificationModal";
-import { useSocket } from '@/hooks/useSocket';
+import { useSocketContext } from '@/app/components/providers/SocketProvider';
 
 export default function Home({ selectedChatId }) {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function Home({ selectedChatId }) {
   const [toast, setToast] = useState(null);
 
   // Socket connection for real-time chat list updates
-  const { socket, isConnected: socketConnected } = useSocket(session?.user?.id);
+  const { socket, isConnected: socketConnected } = useSocketContext();
 
   useEffect(() => {
     fetchChats();
