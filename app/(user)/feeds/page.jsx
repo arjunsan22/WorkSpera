@@ -826,25 +826,36 @@ export default function Feeds() {
                       </div>
 
                       {/* Connect Button Logic Kept Exactly Same */}
-                      {(post.type === 'job' || post.isServiceRequest === true) && (
-                        <button
-                          onClick={async () => {
-                            const res = await fetch(`/api/user/posts/${post._id}/connect`, {
-                              method: "POST",
-                            });
-                            if (res.ok) {
-                              showToast("Connection request sent!");
-                            } else {
-                              const data = await res.json();
-                              showToast(data.error || "Failed to connect", "error");
-                            }
-                          }}
-                          className="group flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold uppercase tracking-tight transition-all active:scale-95 shadow-lg shadow-indigo-500/20 cursor-pointer"
-                        >
-                          <FiUserPlus className="text-base" />
-                          <span className="hidden sm:block">Connect for Work</span>
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {(post.type === 'job' || post.isServiceRequest === true) && (
+                          <button
+                            onClick={async () => {
+                              const res = await fetch(`/api/user/posts/${post._id}/connect`, {
+                                method: "POST",
+                              });
+                              if (res.ok) {
+                                showToast("Connection request sent!");
+                              } else {
+                                const data = await res.json();
+                                showToast(data.error || "Failed to connect", "error");
+                              }
+                            }}
+                            className="group flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold uppercase tracking-tight transition-all active:scale-95 shadow-lg shadow-indigo-500/20 cursor-pointer"
+                          >
+                            <FiUserPlus className="text-base" />
+                            <span className="hidden sm:block">Connect for Work</span>
+                          </button>
+                        )}
+                        {session?.user?.id !== post.user._id && (
+                          <button
+                            onClick={() => setReportData({ type: "Post", id: post._id })}
+                            className="p-2 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-full transition-all cursor-pointer"
+                            title="Report Post"
+                          >
+                            <FaExclamationTriangle className="text-sm" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Post Content */}
@@ -1093,15 +1104,6 @@ export default function Feeds() {
                                     <FaWhatsapp className="text-green-400" />
                                     Share via WhatsApp
                                   </button>
-                                  {session?.user?.id !== post.user._id && (
-                                  <button
-                                    onClick={() => { setReportData({ type: "Post", id: post._id }); setShareMenuPostId(null); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-500 hover:bg-slate-700/70 transition-colors border-t border-slate-700/50"
-                                  >
-                                    <FaExclamationTriangle className="text-rose-500" />
-                                    Report Post
-                                  </button>
-                                  )}
                                 </motion.div>
                               )}
                             </AnimatePresence>

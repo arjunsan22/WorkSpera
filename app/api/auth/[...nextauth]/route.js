@@ -96,7 +96,7 @@ export const authOptions = {
           } else {
             // Block check for existing users signing in via Google
             if (existingUser.isBlocked) {
-              return false;
+              return "/login?error=Blocked"; // Redirect to login with error
             }
 
             // Update profile image from Google if user still has default
@@ -130,19 +130,23 @@ export const authOptions = {
         token.role = user.role;
       }
 
-      // 🔄 If the role was changed in the database, we need to fetch it to keep the session updated
-      if (!token.role || token.role === "user") {
-        try {
-          await connectDB();
-          const dbUser = await User.findById(token.id).select("role username profileImage");
-          if (dbUser) {
-            token.role = dbUser.role;
-            token.username = dbUser.username;
-            token.image = dbUser.profileImage;
-          }
-        } catch (error) {
-          console.error("Error fetching user in JWT callback:", error);
+      // 🔄 If the role was changed or user blocked in the database, keep the session updated
+      try {
+        await connectDB();
+        if (token.id) {
+            const dbUser = await User.findById(token.id).select("role username profileImage isBlocked");
+            if (dbUser) {
+                // If user was newly blocked while active session, clear their session token effectively
+                if (dbUser.isBlocked) {
+                    return {}; 
+                }
+                token.role = dbUser.role;
+                token.username = dbUser.username;
+                token.image = dbUser.profileImage;
+            }
         }
+      } catch (error) {
+        console.error("Error fetching user in JWT callback:", error);
       }
 
       return token;
