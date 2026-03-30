@@ -184,9 +184,14 @@ export default function AdminDashboard() {
                             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold italic">WorkSpera Core v2.4</p>
                         </div>
                     </div>
-                    <button onClick={() => router.push("/")} className="text-xs font-bold text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
-                        <span className="group-hover:-translate-x-1 transition-transform">←</span> RETURN TO PLATFORM
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => router.push("/Dashboard/reports")} className="px-4 py-2 border border-rose-500/50 text-rose-400 rounded-lg text-xs font-bold hover:bg-rose-500 hover:text-white transition-all shadow-[0_0_15px_rgba(244,63,94,0.2)]">
+                            VIEW REPORTS
+                        </button>
+                        <button onClick={() => router.push("/")} className="text-xs font-bold text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                            <span className="group-hover:-translate-x-1 transition-transform">←</span> RETURN TO PLATFORM
+                        </button>
+                    </div>
                 </div>
             </header>
 

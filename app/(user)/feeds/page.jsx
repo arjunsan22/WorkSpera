@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHeart, FaRegHeart, FaComment, FaShare, FaTimes, FaWhatsapp, FaBookmark, FaRegBookmark, FaCopy, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaComment, FaShare, FaTimes, FaWhatsapp, FaBookmark, FaRegBookmark, FaCopy, FaExternalLinkAlt, FaExclamationTriangle } from 'react-icons/fa';
 import Link from "next/link";
 import { FiArrowLeft, FiUserPlus, FiMenu, FiUser, FiMessageSquare, FiBookOpen, FiBell, FiLogOut, FiRefreshCw, FiX } from "react-icons/fi";
 import StoryFeed from "@/app/components/stories/StoryFeed";
 import ReactionModal from "@/app/components/user/ReactionModal";
 import NotificationModal from "@/app/components/user/NotificationModal";
+import ReportModal from "@/app/components/user/ReportModal";
+
 // Toast Component
 const Toast = ({ message, type = 'success', onClose }) => {
   useEffect(() => {
@@ -44,6 +46,7 @@ const CommentsModal = ({
   onAddReply,
   replyTexts,
   setReplyTexts,
+  setReportData,
 }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -87,9 +90,16 @@ const CommentsModal = ({
                             <Link href={`/profile/${comment.user._id}`} className="font-semibold text-white text-sm hover:underline">
                               {comment.user.name}
                             </Link>
-                            <span className="text-xs text-gray-500">
-                              {new Date(comment.createdAt).toLocaleDateString()}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">
+                                {new Date(comment.createdAt).toLocaleDateString()}
+                              </span>
+                              {session?.user?.id !== comment.user._id && (
+                                <button onClick={() => setReportData({ type: "Comment", id: comment._id })} className="text-xs text-rose-500 hover:underline">
+                                  Report
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <p className="text-gray-300 text-sm">{comment.text}</p>
                           {/* Reply input */}
@@ -215,6 +225,7 @@ export default function Feeds() {
   const [hoveredReactionPostId, setHoveredReactionPostId] = useState(null);
   const [showReactionModal, setShowReactionModal] = useState(false);
   const [reactionModalLikes, setReactionModalLikes] = useState([]);
+  const [reportData, setReportData] = useState(null);
 
   useEffect(() => {
     fetchPosts();
@@ -732,6 +743,7 @@ export default function Feeds() {
             onAddReply={handleAddReply}
             replyTexts={replyTexts}
             setReplyTexts={setReplyTexts}
+            setReportData={setReportData}
           />
         )}
 
@@ -1081,6 +1093,15 @@ export default function Feeds() {
                                     <FaWhatsapp className="text-green-400" />
                                     Share via WhatsApp
                                   </button>
+                                  {session?.user?.id !== post.user._id && (
+                                  <button
+                                    onClick={() => { setReportData({ type: "Post", id: post._id }); setShareMenuPostId(null); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-500 hover:bg-slate-700/70 transition-colors border-t border-slate-700/50"
+                                  >
+                                    <FaExclamationTriangle className="text-rose-500" />
+                                    Report Post
+                                  </button>
+                                  )}
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -1136,6 +1157,13 @@ export default function Feeds() {
         notifications={notifications}
         setNotifications={setNotifications}
         setUnreadCount={setUnreadCount}
+      />
+
+      <ReportModal 
+        isOpen={!!reportData} 
+        onClose={() => setReportData(null)} 
+        targetType={reportData?.type} 
+        targetId={reportData?.id} 
       />
 
     </div >

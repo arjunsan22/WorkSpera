@@ -6,9 +6,10 @@ import { useSession, signOut } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiArrowLeft, FiGrid, FiImage, FiHeart, FiMessageCircle, FiCalendar, FiUserPlus, FiCheck, FiBookOpen, FiLink, FiBriefcase, FiMenu, FiMessageSquare, FiLogOut, FiBell, FiUser } from 'react-icons/fi';
-import { FaWhatsapp } from 'react-icons/fa';
+import { FaWhatsapp, FaExclamationTriangle } from 'react-icons/fa';
 import Link from 'next/link';
 import NotificationModal from "@/app/components/user/NotificationModal";
+import ReportModal from "@/app/components/user/ReportModal";
 
 export default function UserProfilePage() {
     const { id } = useParams();
@@ -25,6 +26,7 @@ export default function UserProfilePage() {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [reportData, setReportData] = useState(null);
 
     // Redirect if viewing own profile
     useEffect(() => {
@@ -394,6 +396,14 @@ export default function UserProfilePage() {
                                         <FiMessageCircle className="w-4 h-4" />
                                         Message
                                     </button>
+
+                                    <button
+                                        onClick={() => setReportData({ type: "Profile", id: user._id })}
+                                        className="px-6 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 flex items-center gap-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/50 shadow-rose-500/20"
+                                    >
+                                        <FaExclamationTriangle className="w-4 h-4" />
+                                        Report
+                                    </button>
                                 </div>
 
                                 {/* Middle Row: Stats */}
@@ -604,6 +614,14 @@ export default function UserProfilePage() {
                 setNotifications={setNotifications}
                 setUnreadCount={setUnreadCount}
             />
+
+            <ReportModal 
+                isOpen={!!reportData} 
+                onClose={() => setReportData(null)} 
+                targetType={reportData?.type} 
+                targetId={reportData?.id} 
+            />
+
         </div>
     );
 }
