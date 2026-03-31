@@ -197,25 +197,31 @@ export const useWebRTC = (socket, remoteUserId) => {
     (targetId) => {
       const pc = new RTCPeerConnection({
         iceServers: [
-          // STUN servers (for discovering public IP)
+          // Google STUN servers (Fast defaults)
           { urls: "stun:stun.l.google.com:19302" },
           { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-          // TURN servers (fallback for strict NATs/Firewalls)
+          // Metered.ca STUN server
+          { urls: "stun:stun.relay.metered.ca:80" },
+          // Metered.ca TURN servers
           {
-            urls: "turn:openrelay.metered.ca:80",
-            username: "openrelayproject",
-            credential: "openrelayproject",
+            urls: "turn:global.relay.metered.ca:80",
+            username: "98648e16e8f2ee7ef1adec9c",
+            credential: "mofojdZaFMYEN76Q",
           },
           {
-            urls: "turn:openrelay.metered.ca:443",
-            username: "openrelayproject",
-            credential: "openrelayproject",
+            urls: "turn:global.relay.metered.ca:80?transport=tcp",
+            username: "98648e16e8f2ee7ef1adec9c",
+            credential: "mofojdZaFMYEN76Q",
           },
           {
-            urls: "turn:openrelay.metered.ca:443?transport=tcp",
-            username: "openrelayproject",
-            credential: "openrelayproject",
+            urls: "turn:global.relay.metered.ca:443",
+            username: "98648e16e8f2ee7ef1adec9c",
+            credential: "mofojdZaFMYEN76Q",
+          },
+          {
+            urls: "turns:global.relay.metered.ca:443?transport=tcp",
+            username: "98648e16e8f2ee7ef1adec9c",
+            credential: "mofojdZaFMYEN76Q",
           },
         ],
       });
