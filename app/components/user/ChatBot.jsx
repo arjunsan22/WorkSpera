@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiSend, FiMessageCircle } from 'react-icons/fi';
+import { useSession } from 'next-auth/react';
 
 export default function ChatBot() {
+    const { data: session } = useSession();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
         {
@@ -24,6 +26,17 @@ export default function ChatBot() {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    useEffect(() => {
+        if (session?.user?.name && messages.length === 1 && messages[0].content.includes("WorkSpera AI")) {
+            setMessages([
+                {
+                    role: 'assistant',
+                    content: `Hey there, **${session.user.name}**! 👋 I'm **WorkSpera AI**, your personal assistant. Ask me anything — career tips, profile help, or just chat!`,
+                },
+            ]);
+        }
+    }, [session?.user?.name]);
 
     useEffect(() => {
         if (isOpen && inputRef.current) {
@@ -96,10 +109,25 @@ export default function ChatBot() {
 
     return (
         <>
-            {/* Floating Chatbot Icon Button */}
-            <motion.button
-                onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white shadow-2xl shadow-indigo-500/40 flex items-center justify-center hover:shadow-indigo-500/60 transition-shadow"
+            <div className="fixed bottom-6 right-6 z-40 flex items-center gap-4 pointer-events-none">
+                {/* Floating Chatbot Tooltip Indicator */}
+                <AnimatePresence>
+                    {!isOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-slate-800/90 backdrop-blur-md border border-indigo-500/40 text-slate-200 text-[13px] font-semibold px-4 py-2.5 rounded-2xl shadow-xl shadow-indigo-500/20 whitespace-nowrap animate-pulse pointer-events-auto hidden sm:block"
+                        >
+                            Need help? I'm here ✨
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Floating Chatbot Icon Button */}
+                <motion.button
+                    onClick={() => setIsOpen(true)}
+                    className="relative w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white shadow-2xl shadow-indigo-500/40 flex items-center justify-center hover:shadow-indigo-500/60 transition-shadow pointer-events-auto"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 initial={{ scale: 0, opacity: 0 }}
@@ -112,6 +140,7 @@ export default function ChatBot() {
                 {/* Pulse ring */}
                 <span className="absolute inset-0 rounded-full bg-indigo-500/30 animate-ping pointer-events-none" />
             </motion.button>
+            </div>
 
             {/* Chatbot Modal */}
             <AnimatePresence>

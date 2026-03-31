@@ -1,9 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const SYSTEM_PROMPT = `You are WorkSpera AI Assistant — a friendly, professional, and helpful chatbot embedded inside WorkSpera, a professional social networking and chat platform. 
+const BASE_SYSTEM_PROMPT = `You are WorkSpera AI Assistant — a friendly, professional, and helpful chatbot embedded inside WorkSpera, a professional social networking and chat platform. 
 
 Your role:
 - Help users with questions about their profile, networking, career advice, and general queries.
@@ -15,6 +17,10 @@ Your role:
 
 export async function POST(request) {
     try {
+        const session = await getServerSession(authOptions);
+        const userName = session?.user?.name || "a user";
+        const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}\nYou are currently talking to: ${userName}. Address them by their name occasionally and keep responses friendly.`;
+
         const { messages } = await request.json();
 
         if (!messages || !Array.isArray(messages) || messages.length === 0) {

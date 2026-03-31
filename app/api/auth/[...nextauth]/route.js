@@ -97,7 +97,6 @@ export const authOptions = {
             // Block check for existing users signing in via Google
             if (existingUser.isBlocked) {
               return "/login?error=Blocked"; // Redirect to login with error
-              throw new Error("Your account has been blocked by an administrator for violating community guidelines. Please contact support.");
             }
 
             // Update profile image from Google if user still has default
