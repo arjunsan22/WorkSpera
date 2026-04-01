@@ -365,7 +365,38 @@ export default function Jobs() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
       `}</style>
 
-      {/* Modern Sidebar (Nav Rail) */}
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 shadow-sm">
+        <div className="flex items-center justify-between px-4 py-4">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all border border-slate-700/30"
+          >
+            <FiMenu className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => router.push('/profile')}
+            className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all border border-slate-700/30"
+          >
+            <FiUser className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Sidebar Overlay for Mobile */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modern Sidebar - Desktop Nav Rail */}
       <aside className="hidden lg:flex w-[80px] flex-col items-center py-8 bg-slate-950 border-r border-slate-900 z-50">
         <div className="mb-12">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
@@ -407,6 +438,74 @@ export default function Jobs() {
           </button>
         </div>
       </aside>
+
+      {/* Mobile Sidebar - Rail Style matching Feed page */}
+      <motion.div
+        initial={false}
+        animate={{ x: sidebarOpen ? 0 : '-100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="lg:hidden fixed top-0 left-0 h-full w-20 flex flex-col items-center py-6 bg-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 z-[70] shadow-2xl"
+      >
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
+          <img src="/favicon.ico" alt="WorkSpera" className="w-7 h-7 object-contain drop-shadow-md" />
+        </div>
+
+        <div className="flex flex-col gap-3 flex-1 mt-10">
+          <button
+            onClick={() => { router.push('/messages'); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiMessageSquare className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => { router.push('/messages'); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiUserPlus className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => { router.push('/feeds'); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiBookOpen className="w-6 h-6" />
+          </button>
+
+          <button
+            className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all transform hover:scale-105"
+          >
+            <FiBriefcase className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => { router.push('/profile'); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiUser className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => { setShowNotifications(true); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105 relative"
+          >
+            <FiBell className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={handleLogout}
+            className="p-3.5 rounded-2xl text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-400 transition-all transform hover:scale-105"
+          >
+            <FiLogOut className="w-6 h-6" />
+          </button>
+        </div>
+      </motion.div>
 
       {/* Main Container */}
       <main className="flex-1 flex flex-col relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
