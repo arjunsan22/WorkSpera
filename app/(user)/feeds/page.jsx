@@ -48,6 +48,7 @@ const CommentsModal = ({
   setReplyTexts,
   setReportData,
 }) => {
+  const [expandedComments, setExpandedComments] = useState(new Set());
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
@@ -134,36 +135,50 @@ const CommentsModal = ({
                           )}
                         </div>
 
-                        {/* Replies */}
+                        {/* Replies Toggle */}
                         {comment.replies && comment.replies.length > 0 && (
-                          <div className="mt-2 pl-10 space-y-2">
-                            {comment.replies.map((reply) => (
-                              <div
-                                key={reply._id}
-                                className="flex space-x-2 text-sm"
-                              >
-                                <Link href={`/profile/${reply.user?._id}`} className="block">
-                                  <img
-                                    src={reply.user?.profileImage || '/default-avatar.png'}
-                                    alt={reply.user?.name || "User"}
-                                    className="w-7 h-7 rounded-full object-cover ring-2 ring-gray-800"
-                                  />
-                                </Link>
-                                <div className="flex-1 bg-gray-900/70 rounded-2xl px-3 py-2 border border-gray-800">
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <Link href={`/profile/${reply.user?._id}`} className="text-xs font-semibold text-white hover:underline">
-                                      {reply.user?.name || "User"}
+                          <div className="mt-2 pl-10">
+                            <button
+                              onClick={() => {
+                                setExpandedComments(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(comment._id)) next.delete(comment._id);
+                                  else next.add(comment._id);
+                                  return next;
+                                });
+                              }}
+                              className="text-xs font-bold text-slate-500 hover:text-indigo-400 flex items-center gap-2 mb-2 transition-colors uppercase tracking-wider"
+                            >
+                              <div className="w-8 h-[1px] bg-slate-800" />
+                              {expandedComments.has(comment._id) ? 'Hide replies' : `View ${comment.replies.length} ${comment.replies.length === 1 ? 'reply' : 'replies'}`}
+                            </button>
+
+                            {expandedComments.has(comment._id) && (
+                              <div className="space-y-3 animate-fade-in">
+                                {comment.replies.map((reply) => (
+                                  <div key={reply._id} className="flex space-x-2 text-sm group/reply">
+                                    <Link href={`/profile/${reply.user?._id}`} className="block">
+                                      <img
+                                        src={reply.user?.profileImage || '/default-avatar.png'}
+                                        alt={reply.user?.name || "User"}
+                                        className="w-7 h-7 rounded-full object-cover ring-2 ring-gray-800 group-hover/reply:ring-indigo-500/50 transition-all"
+                                      />
                                     </Link>
-                                    <span className="text-[10px] text-gray-500">
-                                      {reply.createdAt
-                                        ? new Date(reply.createdAt).toLocaleDateString()
-                                        : ""}
-                                    </span>
+                                    <div className="flex-1 bg-gray-900/70 rounded-2xl px-3 py-2 border border-gray-800 group-hover/reply:border-gray-700 transition-all">
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <Link href={`/profile/${reply.user?._id}`} className="text-xs font-semibold text-white hover:underline">
+                                          {reply.user?.name || "User"}
+                                        </Link>
+                                        <span className="text-[10px] text-gray-500">
+                                          {reply.createdAt ? new Date(reply.createdAt).toLocaleDateString() : ""}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-gray-300">{reply.text}</p>
+                                    </div>
                                   </div>
-                                  <p className="text-xs text-gray-300">{reply.text}</p>
-                                </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
                         )}
                       </div>

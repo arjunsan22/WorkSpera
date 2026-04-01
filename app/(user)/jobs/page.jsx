@@ -52,6 +52,7 @@ const CommentsModal = ({
   setReplyTexts,
   setReportData,
 }) => {
+  const [expandedComments, setExpandedComments] = useState(new Set());
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <motion.div
@@ -112,17 +113,40 @@ const CommentsModal = ({
                     </div>
 
                     {/* Replies Logic */}
-                    {comment.replies?.map((reply) => (
-                      <div key={reply._id} className="flex gap-3 ml-4 bg-slate-800/20 p-3 rounded-xl border border-slate-800/50">
-                        <img src={reply.user?.profileImage || '/default-avatar.png'} className="w-6 h-6 rounded-lg object-cover" alt="" />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-200">{reply.user?.name}</span>
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="mt-2 ml-4">
+                        <button
+                          onClick={() => {
+                            setExpandedComments(prev => {
+                              const next = new Set(prev);
+                              if (next.has(comment._id)) next.delete(comment._id);
+                              else next.add(comment._id);
+                              return next;
+                            });
+                          }}
+                          className="text-[10px] font-black text-slate-500 hover:text-indigo-400 flex items-center gap-2 mb-2 transition-colors uppercase tracking-widest"
+                        >
+                          <div className="w-6 h-[1px] bg-slate-800" />
+                          {expandedComments.has(comment._id) ? 'Hide replies' : `View ${comment.replies.length} ${comment.replies.length === 1 ? 'reply' : 'replies'}`}
+                        </button>
+
+                        {expandedComments.has(comment._id) && (
+                          <div className="space-y-3 animate-fade-in mb-4">
+                            {comment.replies.map((reply) => (
+                              <div key={reply._id} className="flex gap-3 bg-slate-800/20 p-3 rounded-xl border border-slate-800/50 group/reply hover:border-slate-700/50 transition-all">
+                                <img src={reply.user?.profileImage || '/default-avatar.png'} className="w-6 h-6 rounded-lg object-cover ring-1 ring-slate-800" alt="" />
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-slate-200 group-hover/reply:text-indigo-300 transition-colors">{reply.user?.name}</span>
+                                  </div>
+                                  <p className="text-xs text-slate-400 mt-1">{reply.text}</p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          <p className="text-xs text-slate-400 mt-1">{reply.text}</p>
-                        </div>
+                        )}
                       </div>
-                    ))}
+                    )}
 
                     {/* Reply Input */}
                     {session && (
