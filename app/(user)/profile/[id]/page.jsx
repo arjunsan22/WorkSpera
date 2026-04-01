@@ -151,14 +151,81 @@ export default function UserProfilePage() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-                <div className="text-center">
-                    <div className="relative w-16 h-16 mx-auto mb-4">
-                        <div className="absolute inset-0 rounded-full border-4 border-indigo-500/30"></div>
-                        <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 animate-spin"></div>
+            <div className="flex flex-col items-center justify-center h-screen bg-[#020617] relative overflow-hidden">
+                {/* Background glow effects */}
+                <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-600/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-600/10 blur-[120px] rounded-full" />
+
+                <div className="relative">
+                    <div className="relative w-24 h-24 mb-8">
+                        {/* Multiple spinning rings for depth */}
+                        <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                            className="absolute inset-0 rounded-[32px] border-2 border-indigo-500/20"
+                        />
+                        <motion.div
+                            animate={{ rotate: -360 }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                            className="absolute inset-2 rounded-[28px] border-2 border-purple-500/20"
+                        />
+                        <div className="absolute inset-4 rounded-[24px] bg-slate-900 border border-slate-800 flex items-center justify-center shadow-2xl">
+                            <motion.div
+                                animate={{ scale: [1, 1.2, 1] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            >
+                                <img src="/favicon.ico" alt="" className="w-8 h-8 object-contain opacity-50" />
+                            </motion.div>
+                        </div>
+                        {/* Active spinner arc */}
+                        <svg className="absolute inset-0 w-full h-full -rotate-90">
+                            <circle
+                                cx="48" cy="48" r="46"
+                                fill="none"
+                                stroke="url(#spinner-gradient-id)"
+                                strokeWidth="4"
+                                strokeDasharray="100 200"
+                                strokeLinecap="round"
+                                className="animate-[dash_2s_ease-in-out_infinite]"
+                            />
+                            <defs>
+                                <linearGradient id="spinner-gradient-id" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#6366f1" />
+                                    <stop offset="100%" stopColor="#a855f7" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
                     </div>
-                    <p className="text-slate-300 font-medium">Loading profile...</p>
                 </div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="flex flex-col items-center gap-2"
+                >
+                    <span className="text-sm font-black uppercase tracking-[0.3em] text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+                        Syncing Profile
+                    </span>
+                    <div className="flex gap-1">
+                        {[0, 1, 2].map(i => (
+                            <motion.div
+                                key={i}
+                                animate={{ opacity: [0.3, 1, 0.3] }}
+                                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                                className="w-1.5 h-1.5 rounded-full bg-indigo-500"
+                            />
+                        ))}
+                    </div>
+                </motion.div>
+
+                <style jsx>{`
+                    @keyframes dash {
+                        0% { stroke-dashoffset: 280; transform: rotate(0deg); }
+                        50% { stroke-dashoffset: 75; transform: rotate(180deg); }
+                        100% { stroke-dashoffset: 280; transform: rotate(360deg); }
+                    }
+                `}</style>
             </div>
         );
     }
@@ -355,100 +422,100 @@ export default function UserProfilePage() {
                         <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full pointer-events-none" />
                         <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full pointer-events-none" />
 
-            <div className="relative flex flex-col md:flex-row gap-6 md:gap-12 w-full">
+                        <div className="relative flex flex-col md:flex-row gap-6 md:gap-12 w-full">
 
-              {/* --- MOBILE LAYOUT: AVATAR & STATS --- */}
-              <div className="flex flex-row items-center justify-between gap-6 w-full md:hidden">
-                <motion.div whileHover={{ scale: 1.02 }} className="relative flex-shrink-0">
-                  <div className="p-1 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500">
-                    <div className="w-20 h-20 rounded-full border-2 border-slate-900 overflow-hidden bg-slate-800">
-                      <img src={user.profileImage || '/public/profile-default-image.png'} alt={user.name} className="w-full h-full object-cover" />
-                    </div>
-                  </div>
-                </motion.div>
+                            {/* --- MOBILE LAYOUT: AVATAR & STATS --- */}
+                            <div className="flex flex-row items-center justify-between gap-6 w-full md:hidden">
+                                <motion.div whileHover={{ scale: 1.02 }} className="relative flex-shrink-0">
+                                    <div className="p-1 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500">
+                                        <div className="w-20 h-20 rounded-full border-2 border-slate-900 overflow-hidden bg-slate-800">
+                                            <img src={user.profileImage || '/public/profile-default-image.png'} alt={user.name} className="w-full h-full object-cover" />
+                                        </div>
+                                    </div>
+                                </motion.div>
 
-                <div className="flex-1 flex items-center justify-around">
-                  <div className="flex flex-col items-center">
-                    <span className="text-lg font-bold text-white">{posts.length}</span>
-                    <span className="text-slate-400 text-xs text-center pr-1">Posts</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-lg font-bold text-white">{user.followers?.length || 0}</span>
-                    <span className="text-slate-400 text-xs text-center pr-1">Followers</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-lg font-bold text-white">{user.following?.length || 0}</span>
-                    <span className="text-slate-400 text-xs text-center">Following</span>
-                  </div>
-                </div>
-              </div>
+                                <div className="flex-1 flex items-center justify-around">
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-lg font-bold text-white">{posts.length}</span>
+                                        <span className="text-slate-400 text-xs text-center pr-1">Posts</span>
+                                    </div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-lg font-bold text-white">{user.followers?.length || 0}</span>
+                                        <span className="text-slate-400 text-xs text-center pr-1">Followers</span>
+                                    </div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-lg font-bold text-white">{user.following?.length || 0}</span>
+                                        <span className="text-slate-400 text-xs text-center">Following</span>
+                                    </div>
+                                </div>
+                            </div>
 
-              {/* --- DESKTOP AVATAR --- */}
-              <motion.div whileHover={{ scale: 1.02 }} className="hidden md:block relative flex-shrink-0">
-                <div className="p-1 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500">
-                  <div className="w-40 h-40 rounded-full border-4 border-slate-900 overflow-hidden bg-slate-800">
-                    <img src={user.profileImage || '/public/profile-default-image.png'} alt={user.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
-                  </div>
-                </div>
-              </motion.div>
+                            {/* --- DESKTOP AVATAR --- */}
+                            <motion.div whileHover={{ scale: 1.02 }} className="hidden md:block relative flex-shrink-0">
+                                <div className="p-1 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500">
+                                    <div className="w-40 h-40 rounded-full border-4 border-slate-900 overflow-hidden bg-slate-800">
+                                        <img src={user.profileImage || '/public/profile-default-image.png'} alt={user.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
+                                    </div>
+                                </div>
+                            </motion.div>
 
-              {/* --- INFO SECTION --- */}
-              <div className="flex-1 flex flex-col items-start w-full">
-                
-                {/* Desktop Top Row */}
-                <div className="hidden md:flex flex-row items-center gap-4 mb-6">
-                  <h2 className="text-3xl font-light text-white tracking-tight">@{user.username}</h2>
-                  <div className="flex items-center gap-2">
-                    <button onClick={handleFollow} className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 flex items-center gap-2 ${isFollowing ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/20'}`}>
-                      {isFollowing ? <><FiCheck className="w-4 h-4" /> Following</> : <><FiUserPlus className="w-4 h-4" /> Follow</>}
-                    </button>
-                    <button onClick={() => router.push(`/chat/${id}`)} className="px-6 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 shadow-indigo-500/20">
-                      <FiMessageCircle className="w-4 h-4" /> Message
-                    </button>
-                    <button onClick={() => setReportData({ type: "Profile", id: user._id })} className="px-6 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 flex items-center gap-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/50 shadow-rose-500/20">
-                      <FaExclamationTriangle className="w-4 h-4" /> Report
-                    </button>
-                  </div>
-                </div>
+                            {/* --- INFO SECTION --- */}
+                            <div className="flex-1 flex flex-col items-start w-full">
 
-                {/* Desktop Stats */}
-                <div className="hidden md:flex items-center gap-10 mb-6">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-white">{posts.length}</span>
-                    <span className="text-slate-400 text-base">posts</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-white">{user.followers?.length || 0}</span>
-                    <span className="text-slate-400 text-base">followers</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-white">{user.following?.length || 0}</span>
-                    <span className="text-slate-400 text-base">following</span>
-                  </div>
-                </div>
+                                {/* Desktop Top Row */}
+                                <div className="hidden md:flex flex-row items-center gap-4 mb-6">
+                                    <h2 className="text-3xl font-light text-white tracking-tight">@{user.username}</h2>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={handleFollow} className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 flex items-center gap-2 ${isFollowing ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/20'}`}>
+                                            {isFollowing ? <><FiCheck className="w-4 h-4" /> Following</> : <><FiUserPlus className="w-4 h-4" /> Follow</>}
+                                        </button>
+                                        <button onClick={() => router.push(`/chat/${id}`)} className="px-6 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 shadow-indigo-500/20">
+                                            <FiMessageCircle className="w-4 h-4" /> Message
+                                        </button>
+                                        <button onClick={() => setReportData({ type: "Profile", id: user._id })} className="px-6 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 flex items-center gap-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/50 shadow-rose-500/20">
+                                            <FaExclamationTriangle className="w-4 h-4" /> Report
+                                        </button>
+                                    </div>
+                                </div>
 
-                {/* Name & Bio */}
-                <div className="text-left mb-4 md:mb-8 w-full">
-                  <h1 className="text-sm font-bold text-white mb-1 md:hidden">@{user.username}</h1>
-                  <h1 className="text-sm md:text-lg font-bold text-white mb-1">{user.name}</h1>
-                  <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{user.bio || 'No bio yet.'}</p>
-                </div>
+                                {/* Desktop Stats */}
+                                <div className="hidden md:flex items-center gap-10 mb-6">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl font-bold text-white">{posts.length}</span>
+                                        <span className="text-slate-400 text-base">posts</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl font-bold text-white">{user.followers?.length || 0}</span>
+                                        <span className="text-slate-400 text-base">followers</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl font-bold text-white">{user.following?.length || 0}</span>
+                                        <span className="text-slate-400 text-base">following</span>
+                                    </div>
+                                </div>
 
-                {/* Mobile Action Buttons */}
-                <div className="flex md:hidden flex-row items-center gap-2 w-full mt-2">
-                  <button onClick={handleFollow} className={`flex-1 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 ${isFollowing ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/20'}`}>
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                  <button onClick={() => router.push(`/chat/${id}`)} className="flex-1 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 shadow-indigo-500/20">
-                    Message
-                  </button>
-                  <button onClick={() => setReportData({ type: "Profile", id: user._id })} className="p-2 bg-slate-800 hover:bg-slate-700 text-rose-500 rounded-lg transition-all active:scale-95 flex items-center justify-center border border-slate-700">
-                    <FaExclamationTriangle className="w-4 h-4" />
-                  </button>
-                </div>
+                                {/* Name & Bio */}
+                                <div className="text-left mb-4 md:mb-8 w-full">
+                                    <h1 className="text-sm font-bold text-white mb-1 md:hidden">@{user.username}</h1>
+                                    <h1 className="text-sm md:text-lg font-bold text-white mb-1">{user.name}</h1>
+                                    <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{user.bio || 'No bio yet.'}</p>
+                                </div>
 
-              </div>
-            </div>
+                                {/* Mobile Action Buttons */}
+                                <div className="flex md:hidden flex-row items-center gap-2 w-full mt-2">
+                                    <button onClick={handleFollow} className={`flex-1 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 ${isFollowing ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/20'}`}>
+                                        {isFollowing ? 'Following' : 'Follow'}
+                                    </button>
+                                    <button onClick={() => router.push(`/chat/${id}`)} className="flex-1 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 shadow-indigo-500/20">
+                                        Message
+                                    </button>
+                                    <button onClick={() => setReportData({ type: "Profile", id: user._id })} className="p-2 bg-slate-800 hover:bg-slate-700 text-rose-500 rounded-lg transition-all active:scale-95 flex items-center justify-center border border-slate-700">
+                                        <FaExclamationTriangle className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
                     </motion.div>
 
                     {/* Professional Profile Section */}
@@ -617,7 +684,7 @@ export default function UserProfilePage() {
                     </motion.div>
                 </div>
             </div>
-            
+
             <NotificationModal
                 showNotifications={showNotifications}
                 setShowNotifications={setShowNotifications}
@@ -626,11 +693,11 @@ export default function UserProfilePage() {
                 setUnreadCount={setUnreadCount}
             />
 
-            <ReportModal 
-                isOpen={!!reportData} 
-                onClose={() => setReportData(null)} 
-                targetType={reportData?.type} 
-                targetId={reportData?.id} 
+            <ReportModal
+                isOpen={!!reportData}
+                onClose={() => setReportData(null)}
+                targetType={reportData?.type}
+                targetId={reportData?.id}
             />
 
         </div>

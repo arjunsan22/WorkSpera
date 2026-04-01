@@ -258,15 +258,23 @@ export default function Home({ selectedChatId }) {
     }
   };
 
-  const filteredChats = chats.filter(chat =>
-    chat.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    chat.user.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredChats = chats.filter(chat => {
+    const search = searchTerm.toLowerCase().trim();
+    if (!search) return true;
+    return (
+      chat.user?.name?.toLowerCase().includes(search) ||
+      chat.user?.username?.toLowerCase().includes(search)
+    );
+  });
 
-  const filteredUsers = allUsers.filter(user =>
-    user.name.toLowerCase().includes(searchUsers.toLowerCase()) ||
-    user.username.toLowerCase().includes(searchUsers.toLowerCase())
-  ).filter(user => user._id !== session?.user?.id);
+  const filteredUsers = allUsers.filter(user => {
+    if (!searchUsers.trim()) return true;
+    const search = searchUsers.toLowerCase().trim();
+    return (
+      user.name?.toLowerCase().includes(search) ||
+      user.username?.toLowerCase().includes(search)
+    );
+  }).filter(user => user._id !== session?.user?.id);
 
   const handleChatClick = (userId) => {
     router.push(`/chat/${userId}`);
@@ -505,7 +513,7 @@ export default function Home({ selectedChatId }) {
         </div>
 
         {/* Search */}
-        <div className="p-4">
+        {/* <div className="p-4">
           <div className="relative">
             <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
             {showFindUsers ? (
@@ -527,6 +535,73 @@ export default function Home({ selectedChatId }) {
                 className="w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border border-slate-700/50 rounded-2xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
               />
             )}
+          </div>
+        </div> */}
+        <div className="px-6 py-4">
+          <div className="relative group">
+            {/* Animated Glowing Background Layer */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-[22px] blur-sm opacity-0 group-focus-within:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+            <div className="relative flex items-center bg-slate-900/40 backdrop-blur-xl border border-slate-800 group-focus-within:border-indigo-500/50 rounded-[20px] transition-all duration-300 shadow-2xl">
+
+              {/* Icon with focus-dependent color */}
+              <div className="pl-4 flex items-center pointer-events-none">
+                <FiSearch className="w-5 h-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors duration-300" />
+              </div>
+
+              <AnimatePresence mode="wait">
+                {showFindUsers ? (
+                  <motion.div
+                    key="searchUsers"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex-1"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Search explorers by name..."
+                      value={searchUsers}
+                      onChange={(e) => setSearchUsers(e.target.value)}
+                      className="w-full bg-transparent border-none focus:ring-0 py-4 px-3 text-[15px] text-slate-100 placeholder-slate-500 font-medium"
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="searchTerm"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex-1"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Find a conversation..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full bg-transparent border-none focus:ring-0 py-4 px-3 text-[15px] text-slate-100 placeholder-slate-500 font-medium"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Modern "Shortcut" hint or Action indicator */}
+              <div className="pr-4 flex items-center gap-2">
+                {((showFindUsers && searchUsers) || (!showFindUsers && searchTerm)) && (
+                  <button 
+                    onClick={() => showFindUsers ? setSearchUsers('') : setSearchTerm('')}
+                    className="p-1 rounded-md text-slate-500 hover:text-indigo-400 hover:bg-slate-800 transition-all"
+                  >
+                    <FiX className="w-4 h-4" />
+                  </button>
+                )}
+                <div className="hidden sm:flex px-2 py-1 rounded-md bg-slate-800/50 border border-slate-700/50 text-[10px] font-black text-slate-500 uppercase tracking-tighter group-focus-within:text-indigo-400 group-focus-within:border-indigo-500/30 transition-all">
+                  {showFindUsers ? 'Users' : 'Chat'}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -645,74 +720,109 @@ export default function Home({ selectedChatId }) {
               )}
             </div>
           ) : (
-            <div className="p-4">
+            <div className="p-6">
               {loadingUsers ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                  <div className="relative">
+                    <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                    <div className="absolute inset-0 w-16 h-16 border-4 border-purple-500/10 border-b-purple-500 rounded-full animate-spin-slow" />
+                  </div>
+                  <p className="text-slate-400 font-medium animate-pulse">Scanning the network...</p>
                 </div>
               ) : filteredUsers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                  <div className="w-20 h-20 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center justify-center py-20 px-6 text-center bg-slate-900/20 rounded-[32px] border border-dashed border-slate-800"
+                >
+                  <div className="w-20 h-20 rounded-3xl bg-slate-800/50 flex items-center justify-center mb-6 rotate-3">
                     <FiUsers className="w-10 h-10 text-slate-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-300 mb-2">No users found</h3>
-                  <p className="text-slate-500">Try searching with different keywords</p>
-                </div>
+                  <h3 className="text-xl font-bold text-slate-200 mb-2">No explorers found</h3>
+                  <p className="text-slate-500 max-w-xs">Try adjusting your search to find other professionals in the network.</p>
+                </motion.div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {filteredUsers.map((user, index) => (
+                <motion.div
+                  key={searchUsers.trim() || 'all'}
+                  variants={{
+                    hidden: { opacity: 0 },
+                    show: {
+                      opacity: 1,
+                      transition: { staggerChildren: 0.02 }
+                    }
+                  }}
+                  initial="hidden"
+                  animate="show"
+                  className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5"
+                >
+                  {filteredUsers.map((user) => (
                     <motion.div
                       key={user._id}
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.03, duration: 0.3 }}
-                      onClick={() => router.push(`/profile/${user._id}`)}
-                      className="group relative bg-slate-800/40 hover:bg-slate-800/70 rounded-xl border border-slate-700/40 hover:border-slate-600/60 transition-all duration-200 cursor-pointer overflow-hidden"
+                      variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+                      }}
+                      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                      className="group relative bg-slate-900/40 backdrop-blur-md border border-slate-800/50 hover:border-indigo-500/40 rounded-[24px] transition-all duration-300 overflow-hidden shadow-xl hover:shadow-indigo-500/10"
                     >
-                      {/* Card Content */}
-                      <div className="p-4">
-                        <div className="flex items-start gap-3">
-                          {/* Profile Image */}
-                          <div className="relative flex-shrink-0">
+                      {/* Subtle Background Glow on Hover */}
+                      <div className="absolute -inset-px bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                      <div className="relative p-5">
+                        {/* Header: Avatar & Online Status */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div
+                            className="relative cursor-pointer"
+                            onClick={() => router.push(`/profile/${user._id}`)}
+                          >
+                            <div className="absolute -inset-1 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-500"></div>
                             {user.profileImage ? (
-                              <div className="w-12 h-12 rounded-full bg-slate-700 overflow-hidden ring-2 ring-slate-600/50 group-hover:ring-indigo-500/30 transition-all">
-                                <img
-                                  src={user.profileImage}
-                                  alt={user.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.target.style.display = 'none';
-                                  }}
-                                />
-                              </div>
+                              <img
+                                src={user.profileImage}
+                                alt={user.name}
+                                className="relative w-16 h-16 rounded-2xl object-cover ring-2 ring-slate-800 group-hover:ring-indigo-500/50 transition-all duration-300"
+                              />
                             ) : (
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-base ring-2 ring-slate-600/50 group-hover:ring-indigo-500/30 transition-all">
+                              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-2xl font-bold text-indigo-400 border border-slate-700">
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
                             )}
                             {user.isOnline && (
-                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-slate-800" />
+                              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-[3px] border-slate-900 shadow-sm" />
                             )}
                           </div>
 
-                          {/* User Info */}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-100 truncate text-sm group-hover:text-white transition-colors">
-                              {user.name}
-                            </h3>
-                            <p className="text-xs text-slate-500 mb-1.5">@{user.username}</p>
-
-                            {/* Professional Summary */}
-                            {user.profile && (
-                              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                                {user.profile}
-                              </p>
-                            )}
-                          </div>
+                          <button
+                            onClick={() => router.push(`/chat/${user._id}`)}
+                            className="p-2.5 rounded-xl bg-slate-800/50 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
+                          >
+                            <FiMessageSquare size={18} />
+                          </button>
                         </div>
 
-                        {/* Follow Button */}
-                        <div className="mt-3 flex justify-end">
+                        {/* Content */}
+                        <div
+                          className="cursor-pointer mb-5"
+                          onClick={() => router.push(`/profile/${user._id}`)}
+                        >
+                          <h3 className="font-bold text-white text-lg leading-tight truncate group-hover:text-indigo-300 transition-colors">
+                            {user.name}
+                          </h3>
+                          <p className="text-indigo-400/70 text-xs font-bold uppercase tracking-wider mb-3">
+                            @{user.username}
+                          </p>
+
+                          {user.profile ? (
+                            <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed min-h-[40px]">
+                              {user.profile}
+                            </p>
+                          ) : (
+                            <p className="text-slate-600 text-sm italic min-h-[40px]">No bio provided</p>
+                          )}
+                        </div>
+
+                        {/* Action Footer */}
+                        <div className="flex items-center gap-2">
                           <button
                             onClick={async (e) => {
                               e.stopPropagation();
@@ -722,38 +832,25 @@ export default function Home({ selectedChatId }) {
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ targetUserId: user._id }),
                                 });
-                                const data = await res.json();
-                                if (res.ok) {
-                                  await fetchAllUsers();
-                                } else {
-                                  alert(data.message || 'Action failed');
-                                }
-                              } catch (err) {
-                                alert('Network error');
-                              }
+                                if (res.ok) await fetchAllUsers();
+                              } catch (err) { console.error(err); }
                             }}
-                            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 flex items-center gap-1.5 ${user.isFollowing
-                              ? 'bg-slate-700/60 text-slate-300 border border-slate-600/50 hover:bg-slate-600/60 hover:text-white'
-                              : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30'
+                            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${user.isFollowing
+                              ? 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20'
+                              : 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:scale-95'
                               }`}
                           >
                             {user.isFollowing ? (
-                              <>
-                                <FiCheck className="w-3.5 h-3.5" />
-                                Following
-                              </>
+                              <><FiCheck className="stroke-[3px]" /> Following</>
                             ) : (
-                              <>
-                                <FiUserPlus className="w-3.5 h-3.5" />
-                                Follow
-                              </>
+                              <><FiUserPlus className="stroke-[3px]" /> Follow</>
                             )}
                           </button>
                         </div>
                       </div>
                     </motion.div>
                   ))}
-                </div>
+                </motion.div>
               )}
             </div>
           )}

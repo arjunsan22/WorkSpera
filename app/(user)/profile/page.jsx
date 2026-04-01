@@ -872,14 +872,81 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="text-center">
-          <div className="relative w-16 h-16 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-full border-4 border-indigo-500/30"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 animate-spin"></div>
+      <div className="flex flex-col items-center justify-center h-screen bg-[#020617] relative overflow-hidden">
+        {/* Background glow effects */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-600/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-600/10 blur-[120px] rounded-full" />
+        
+        <div className="relative">
+          <div className="relative w-24 h-24 mb-8">
+            {/* Multiple spinning rings for depth */}
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 rounded-[32px] border-2 border-indigo-500/20"
+            />
+            <motion.div 
+              animate={{ rotate: -360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-2 rounded-[28px] border-2 border-purple-500/20"
+            />
+            <div className="absolute inset-4 rounded-[24px] bg-slate-900 border border-slate-800 flex items-center justify-center shadow-2xl">
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <img src="/favicon.ico" alt="" className="w-8 h-8 object-contain opacity-50" />
+              </motion.div>
+            </div>
+            {/* Active spinner arc */}
+            <svg className="absolute inset-0 w-full h-full -rotate-90">
+              <circle
+                cx="48" cy="48" r="46"
+                fill="none"
+                stroke="url(#spinner-gradient)"
+                strokeWidth="4"
+                strokeDasharray="100 200"
+                strokeLinecap="round"
+                className="animate-[dash_2s_ease-in-out_infinite]"
+              />
+              <defs>
+                <linearGradient id="spinner-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="100%" stopColor="#a855f7" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
-          <p className="text-slate-300 font-medium">Loading profile...</p>
         </div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="flex flex-col items-center gap-2"
+        >
+          <span className="text-sm font-black uppercase tracking-[0.3em] text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+            Fetching Profile
+          </span>
+          <div className="flex gap-1">
+            {[0, 1, 2].map(i => (
+              <motion.div
+                key={i}
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                className="w-1.5 h-1.5 rounded-full bg-indigo-500"
+              />
+            ))}
+          </div>
+        </motion.div>
+
+        <style jsx>{`
+          @keyframes dash {
+            0% { stroke-dashoffset: 280; transform: rotate(0deg); }
+          50% { stroke-dashoffset: 75; transform: rotate(180deg); }
+          100% { stroke-dashoffset: 280; transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
