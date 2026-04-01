@@ -242,21 +242,21 @@ export default function UserProfilePage() {
     }
 
     return (
-        <div className="flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 overflow-hidden">
+        <div className="flex h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans selection:bg-indigo-500/30">
             {/* Mobile Header */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50">
+            <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 shadow-sm">
                 <div className="flex items-center justify-between px-4 py-4">
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all"
+                        className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all border border-slate-700/30"
                     >
                         <FiMenu className="w-6 h-6" />
                     </button>
                     <button
-                        onClick={() => router.push('/feeds')}
-                        className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all"
+                        onClick={() => router.push('/profile')}
+                        className="p-2 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 transition-all border border-slate-700/30"
                     >
-                        <FiBookOpen className="w-5 h-5" />
+                        <FiUser className="w-5 h-5" />
                     </button>
                 </div>
             </div>
@@ -274,135 +274,86 @@ export default function UserProfilePage() {
                 )}
             </AnimatePresence>
 
-            {/* Desktop Sidebar */}
-            <div className="hidden lg:flex w-20 flex-col items-center py-6 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
-                    <img src="/favicon.ico" alt="WorkSpera" className="w-7 h-7 object-contain drop-shadow-md" />
+            {/* Modern Sidebar - Desktop Nav Rail */}
+            <aside className="hidden lg:flex w-[80px] flex-col items-center py-8 bg-slate-950 border-r border-slate-900 z-50">
+                <div className="mb-12">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
+                        <img src="/favicon.ico" alt="WorkSpera" className="w-7 h-7 object-contain drop-shadow-md" />
+                    </div>
                 </div>
 
-                <div className="flex flex-col gap-3 flex-1">
-                    <button
-                        onClick={() => router.push('/messages')}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiMessageSquare className="w-6 h-6" />
-                    </button>
-
-                    <button
-                        onClick={() => router.push('/messages')}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiUserPlus className="w-6 h-6" />
-                    </button>
-
-                    <button
-                        onClick={() => router.push('/feeds')}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiBookOpen className="w-6 h-6" />
-                    </button>
-
-                    <button
-                        onClick={() => router.push('/jobs')}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiBriefcase className="w-6 h-6" />
-                    </button>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                    <button
-                        onClick={() => router.push('/profile')}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiUser className="w-6 h-6" />
-                    </button>
-
-                    <button
-                        onClick={() => setShowNotifications(true)}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105 relative"
-                    >
-                        <FiBell className="w-6 h-6" />
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                                {unreadCount > 9 ? '9+' : unreadCount}
+                <nav className="flex-1 flex flex-col gap-8">
+                    {[
+                        { icon: <FiMessageSquare size={22} />, path: '/messages', label: 'Chat' },
+                        { icon: <FiUserPlus size={22} />, path: '/messages', label: 'Network' },
+                        { icon: <FiBookOpen size={22} />, path: '/feeds', label: 'Feed' },
+                        { icon: <FiBriefcase size={22} />, path: '/jobs', label: 'Jobs' },
+                    ].map((item, i) => (
+                        <button
+                            key={i}
+                            onClick={() => router.push(item.path)}
+                            className={`group relative p-3 rounded-2xl transition-all text-slate-500 hover:bg-slate-900 hover:text-slate-300`}
+                        >
+                            {item.icon}
+                            <span className="absolute left-full ml-4 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                {item.label}
                             </span>
-                        )}
+                        </button>
+                    ))}
+                </nav>
+
+                <div className="flex flex-col gap-6 mt-auto">
+                    <button onClick={() => setShowNotifications(true)} className="relative p-3 text-slate-500 hover:text-indigo-400 transition-colors">
+                        <FiBell size={22} />
+                        {unreadCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-4 ring-slate-950" />}
                     </button>
-                    <button
-                        onClick={handleLogout}
-                        className="p-3.5 rounded-2xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all transform hover:scale-105"
-                    >
-                        <FiLogOut className="w-6 h-6" />
+                    <button onClick={() => router.push('/profile')} className="p-0.5 rounded-xl border border-slate-800 hover:border-indigo-500 transition-colors">
+                        <img src={session?.user?.image || '/default-avatar.png'} className="w-9 h-9 rounded-[25px] object-cover" alt="" />
+                    </button>
+                    <button onClick={handleLogout} className="p-3 text-slate-600 hover:text-rose-400 transition-colors">
+                        <FiLogOut size={22} />
                     </button>
                 </div>
-            </div>
+            </aside>
 
-            {/* Mobile Sidebar */}
+            {/* Mobile Sidebar - Rail Style matching Feed page */}
             <motion.div
                 initial={false}
                 animate={{ x: sidebarOpen ? 0 : '-100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="lg:hidden fixed top-0 left-0 h-full w-20 flex flex-col items-center py-6 bg-slate-900/50 backdrop-blur-xl border-r border-slate-700/50 z-50"
+                className="lg:hidden fixed top-0 left-0 h-full w-20 flex flex-col items-center py-6 bg-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 z-[70] shadow-2xl"
             >
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center mb-8 shadow-lg shadow-indigo-500/20">
                     <img src="/favicon.ico" alt="WorkSpera" className="w-7 h-7 object-contain drop-shadow-md" />
                 </div>
 
-                <div className="flex flex-col gap-3 flex-1 mt-20 lg:mt-0">
-                    <button
-                        onClick={() => { router.push('/messages'); setSidebarOpen(false); }}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiMessageSquare className="w-6 h-6" />
-                    </button>
+                <nav className="flex-1 flex flex-col gap-6">
+                    {[
+                        { icon: <FiMessageSquare size={22} />, path: '/messages' },
+                        { icon: <FiUserPlus size={22} />, path: '/messages' },
+                        { icon: <FiBookOpen size={22} />, path: '/feeds' },
+                        { icon: <FiBriefcase size={22} />, path: '/jobs' },
+                    ].map((item, i) => (
+                        <button
+                            key={i}
+                            onClick={() => { router.push(item.path); setSidebarOpen(false); }}
+                            className={`p-3 rounded-2xl transition-all text-slate-500`}
+                        >
+                            {item.icon}
+                        </button>
+                    ))}
+                </nav>
 
-                    <button
-                        onClick={() => { router.push('/messages'); setSidebarOpen(false); }}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiUserPlus className="w-6 h-6" />
+                <div className="flex flex-col gap-6">
+                    <button onClick={() => { setShowNotifications(true); setSidebarOpen(false); }} className="relative p-3 text-slate-500">
+                        <FiBell size={22} />
+                        {unreadCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full" />}
                     </button>
-
-                    <button
-                        onClick={() => { router.push('/feeds'); setSidebarOpen(false); }}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiBookOpen className="w-6 h-6" />
+                    <button onClick={() => { router.push('/profile'); setSidebarOpen(false); }} className="p-0.5 rounded-xl border border-slate-700">
+                        <img src={session?.user?.image || '/default-avatar.png'} className="w-9 h-9 rounded-full object-cover" alt="" />
                     </button>
-
-                    <button
-                        onClick={() => { router.push('/jobs'); setSidebarOpen(false); }}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiBriefcase className="w-6 h-6" />
-                    </button>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                    <button
-                        onClick={() => { router.push('/profile'); setSidebarOpen(false); }}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
-                    >
-                        <FiUser className="w-6 h-6" />
-                    </button>
-
-                    <button
-                        onClick={() => { setShowNotifications(true); setSidebarOpen(false); }}
-                        className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105 relative"
-                    >
-                        <FiBell className="w-6 h-6" />
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        onClick={handleLogout}
-                        className="p-3.5 rounded-2xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all transform hover:scale-105"
-                    >
-                        <FiLogOut className="w-6 h-6" />
+                    <button onClick={handleLogout} className="p-3 text-slate-600">
+                        <FiLogOut size={22} />
                     </button>
                 </div>
             </motion.div>
