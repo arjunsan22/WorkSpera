@@ -537,7 +537,7 @@ export default function Feeds() {
   // No early return for loading, we handle it inside the layout
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 overflow-hidden">
+    <div className="flex h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans selection:bg-indigo-500/30">
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -1126,11 +1126,11 @@ export default function Feeds() {
         setUnreadCount={setUnreadCount}
       />
 
-      <ReportModal 
-        isOpen={!!reportData} 
-        onClose={() => setReportData(null)} 
-        targetType={reportData?.type} 
-        targetId={reportData?.id} 
+      <ReportModal
+        isOpen={!!reportData}
+        onClose={() => setReportData(null)}
+        targetType={reportData?.type}
+        targetId={reportData?.id}
       />
 
     </div >

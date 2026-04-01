@@ -288,7 +288,7 @@ export default function Home({ selectedChatId }) {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 overflow-hidden">
+    <div className="flex h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans selection:bg-indigo-500/30">
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 shadow-sm">
         <div className="flex items-center justify-between px-4 py-4">
@@ -799,8 +799,8 @@ export default function Home({ selectedChatId }) {
           ) : (
             <div className="flex-1 flex items-center justify-center p-8">
               <div className="text-center max-w-md">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
-                  <FiMessageSquare className="w-12 h-12 text-white" />
+                <div className="w-24 h-24 mx-auto mb-6 rounded-[32px] bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30 ring-1 ring-white/20">
+                  <img src="/favicon.ico" alt="WorkSpera" className="w-12 h-12 object-contain drop-shadow-md" />
                 </div>
                 <h2 className="text-3xl font-bold text-slate-200 mb-3">Your messages are waiting</h2>
                 <p className="text-slate-400 text-lg">Open a chat and start connecting now.</p>
