@@ -431,7 +431,7 @@ export default function Jobs() {
             {unreadCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-4 ring-slate-950" />}
           </button>
           <button onClick={() => router.push('/profile')} className="p-0.5 rounded-xl border border-slate-800 hover:border-indigo-500 transition-colors">
-            <img src={session?.user?.image || '/default-avatar.png'} className="w-9 h-9 rounded-[10px] object-cover" alt="" />
+            <img src={session?.user?.image || '/default-avatar.png'} className="w-9 h-9 rounded-[25px] object-cover" alt="" />
           </button>
           <button onClick={handleLogout} className="p-3 text-slate-600 hover:text-rose-400 transition-colors">
             <FiLogOut size={22} />
