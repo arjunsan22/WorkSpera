@@ -531,7 +531,7 @@ export default function Jobs() {
           />
         )}
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pt-12 pb-24 px-4 md:px-8">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pt-12 mt-16 md:mt-0 pb-24 px-4 md:px-8">
           <div className="max-w-2xl mx-auto">
 
             {/* AI Search Header Section */}
