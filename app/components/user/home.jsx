@@ -330,16 +330,17 @@ export default function Home({ selectedChatId }) {
 
         <nav className="flex-1 flex flex-col gap-8">
           {[
-            { icon: <FiMessageSquare size={22} />, path: '/messages', label: 'Chat', active: true },
-            { icon: <FiUserPlus size={22} />, path: '/messages', label: 'Network' },
-            { icon: <FiBookOpen size={22} />, path: '/feeds', label: 'Feed' },
-            { icon: <FiBriefcase size={22} />, path: '/jobs', label: 'Jobs' },
+            { id: 'chat', icon: <FiMessageSquare size={22} />, label: 'Chat', active: !showFindUsers },
+            { id: 'network', icon: <FiUserPlus size={22} />, label: 'Network', active: showFindUsers },
+            { id: 'feed', icon: <FiBookOpen size={22} />, path: '/feeds', label: 'Feed' },
+            { id: 'jobs', icon: <FiBriefcase size={22} />, path: '/jobs', label: 'Jobs' },
           ].map((item, i) => (
             <button
               key={i}
               onClick={() => {
-                if (item.path === '/messages') return; // already here
-                router.push(item.path);
+                if (item.id === 'chat') setShowFindUsers(false);
+                else if (item.id === 'network') setShowFindUsers(true);
+                else if (item.path) router.push(item.path);
               }}
               className={`group relative p-3 rounded-2xl transition-all ${item.active ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-900 hover:text-slate-300'}`}
             >
@@ -379,14 +380,19 @@ export default function Home({ selectedChatId }) {
 
         <nav className="flex-1 flex flex-col gap-6">
           {[
-            { icon: <FiMessageSquare size={22} />, path: '/messages', active: true },
-            { icon: <FiUserPlus size={22} />, path: '/messages' },
-            { icon: <FiBookOpen size={22} />, path: '/feeds' },
-            { icon: <FiBriefcase size={22} />, path: '/jobs' },
+            { id: 'chat', icon: <FiMessageSquare size={22} />, label: 'Chat', active: !showFindUsers },
+            { id: 'network', icon: <FiUserPlus size={22} />, label: 'Network', active: showFindUsers },
+            { id: 'feed', icon: <FiBookOpen size={22} />, path: '/feeds' },
+            { id: 'jobs', icon: <FiBriefcase size={22} />, path: '/jobs' },
           ].map((item, i) => (
             <button
               key={i}
-              onClick={() => { router.push(item.path); setSidebarOpen(false); }}
+              onClick={() => {
+                if (item.id === 'chat') setShowFindUsers(false);
+                else if (item.id === 'network') setShowFindUsers(true);
+                else if (item.path) router.push(item.path);
+                setSidebarOpen(false);
+              }}
               className={`p-3 rounded-2xl transition-all ${item.active ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500'}`}
             >
               {item.icon}
