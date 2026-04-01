@@ -1,66 +1,61 @@
-// app/api/user/posts/route.js
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Post from "@/models/Post";
 import User from "@/models/User";
-import Notification from "@/models/Notification";
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-async function triggerAISkillMatching(post, currentUser) {
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `
-      Extract a comprehensive array of minimum 3 technical and soft skills required for the following job post:
-      "${post.caption}"
-      Return ONLY a JSON array of skill strings, absolutely no other text. e.g. ["React", "JavaScript", "Frontend Development"]
-    `;
-    const result = await model.generateContent(prompt);
-    const textResponse = result.response.text();
-    const jsonMatch = textResponse.match(/\[.*\]/s);
-    let extractedSkills = [];
-    if (jsonMatch) {
-      extractedSkills = JSON.parse(jsonMatch[0]);
-    } else {
-      extractedSkills = JSON.parse(textResponse);
-    }
-
-    if (Array.isArray(extractedSkills) && extractedSkills.length > 0) {
-      // Find all users who have at least one of these skills and are not the poster
-      // We do a regex match in the user's skills array
-      const skillRegexes = extractedSkills.map(skill => new RegExp(skill, 'i'));
-      
-      const matchingUsers = await User.find({
-        _id: { $ne: currentUser.id },
-        skills: { $in: skillRegexes }
-      }).select('_id name');
-
-      // Create a notification for each matching user
-      if (matchingUsers.length > 0) {
-        const notifications = matchingUsers.map(user => ({
-          recipient: user._id,
-          sender: currentUser.id,
-          type: 'job_alert',
-          post: post._id,
-          message: `New job posted by ${currentUser.name} matches your skills!`,
-          read: false
-        }));
-
-        await Notification.insertMany(notifications);
-      }
-    }
-  } catch (error) {
-    console.error("Error in AI Skill Matching:", error);
-  }
-}
-
-
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id || null;
+
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get('q');
+
+    let postQuery = { visibility: "public", isServiceRequest: true };
+
+    // AI Semantic Search Logic
+    if (query) {
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const prompt = `
+          Analyze this job search query: "${query}"
+          Extract the core meaning, required skills, job roles, and synonyms.
+          Return a JSON array of string keywords that would be highly relevant to search against a job / service request database.
+          Make the array comprehensive enough to catch semantic variations (e.g. if query is "frontend fresher", include ["react", "javascript", "frontend", "fresher", "entry level", "junior", "ui", "web developer"]).
+          Return ONLY valid JSON array and nothing else.
+        `;
+
+        const result = await model.generateContent(prompt);
+        const textResponse = result.response.text();
+        const jsonMatch = textResponse.match(/\[.*\]/s);
+        let keywords = [];
+        if (jsonMatch) {
+            keywords = JSON.parse(jsonMatch[0]);
+        } else {
+            keywords = JSON.parse(textResponse);
+        }
+
+        if (Array.isArray(keywords) && keywords.length > 0) {
+            // Add a text search or a complex regex search
+            const regexArr = keywords.map(kw => new RegExp(kw, 'i'));
+            postQuery.$or = [
+                { caption: { $in: regexArr } },
+                { 'tags': { $in: regexArr } }
+            ];
+        }
+      } catch (aiError) {
+        console.error("AI Semantic search failed, falling back to basic search", aiError);
+        const basicRegex = new RegExp(query, 'i');
+        postQuery.$or = [
+            { caption: basicRegex },
+            { 'tags': basicRegex }
+        ];
+      }
+    }
 
     // Fetch user's saved posts for isSaved flag
     let savedPostIds = new Set();
@@ -72,7 +67,7 @@ export async function GET(request) {
     }
 
     // Fetch posts with top-level user and comment users populated
-    let posts = await Post.find({ visibility: "public" })
+    let posts = await Post.find(postQuery)
       .populate("user", "name username profileImage")
       .populate("comments.user", "name username profileImage")
       .populate("likes.user", "name username profileImage")
@@ -85,7 +80,7 @@ export async function GET(request) {
       post.comments?.forEach(comment => {
         comment.replies?.forEach(reply => {
           if (reply.user) {
-            replyUserIds.add(String(reply.user)); // ✅ Safe conversion
+            replyUserIds.add(String(reply.user));
           }
         });
       });
@@ -99,7 +94,7 @@ export async function GET(request) {
         "name username profileImage"
       ).lean();
       users.forEach(user => {
-        replyUserMap[String(user._id)] = user; // ✅ key as string
+        replyUserMap[String(user._id)] = user;
       });
     }
 
@@ -113,11 +108,9 @@ export async function GET(request) {
         return { ...comment, replies: updatedReplies };
       }) || [];
 
-      // Normalize likes for comparison - now likes are objects with { user, reactionType }
+      // Normalize likes for comparison
       const likesArray = post.likes || [];
       const likeUserIds = likesArray.map(like => {
-        // Handle both old format (plain ObjectId) and new format ({ user, reactionType })
-        // If populated user
         if (like.user && typeof like.user === 'object' && like.user._id) return String(like.user._id);
         if (like.user) return String(like.user);
         return String(like);
@@ -188,67 +181,7 @@ export async function GET(request) {
 
     return NextResponse.json({ posts: processedPosts }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching posts:", error);
+    console.error("Error fetching jobs:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-
-}
-
-export async function POST(request) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { caption, images, userId, type, poll } = body;
-
-    if (session.user.id !== userId) {
-      return NextResponse.json(
-        { error: "Unauthorized to create post for this user" },
-        { status: 403 }
-      );
-    }
-
-    const userExists = await User.findById(userId);
-    if (!userExists) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    if ((!images || images.length === 0) && !poll) {
-      return NextResponse.json(
-        { error: "At least one image or a poll is required" },
-        { status: 400 }
-      );
-    }
-
-    const newPost = await Post.create({
-      user: userId,
-      caption: caption || "",
-      image: images || [],
-      type: type || 'feed',
-      isServiceRequest: type === 'job', // Set based on type
-      poll: poll || undefined,
-    });
-
-    // Handle AI Skill Matching Notification for Jobs in the background
-    if (type === 'job') {
-      triggerAISkillMatching(newPost, session.user);
-    }
-
-    const finalPost = await Post.findById(newPost._id).populate(
-      "user",
-      "name username profileImage"
-    );
-
-    return NextResponse.json({ post: finalPost }, { status: 201 });
-  } catch (error) {
-    console.error("Error creating post:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
   }
 }

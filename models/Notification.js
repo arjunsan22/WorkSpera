@@ -14,7 +14,7 @@ const NotificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["follow", "like", "comment", "message", "connection_request", "connect"], // extend as needed
+    enum: ["follow", "like", "comment", "message", "connection_request", "connect", "job_alert"], // extend as needed
     required: true,
   },
   post: {

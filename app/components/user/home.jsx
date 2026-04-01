@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiSearch, FiMessageSquare, FiBookOpen, FiPlusCircle,
   FiSettings, FiBell, FiLogOut, FiUserPlus, FiUsers,
-  FiX, FiUser, FiTrash2, FiRefreshCw, FiMenu, FiCheck
+  FiX, FiUser, FiTrash2, FiRefreshCw, FiMenu, FiCheck, FiBriefcase
 } from 'react-icons/fi';
 import { FaWhatsapp } from "react-icons/fa";
 import ChatWindow from "./ChatWindow";
@@ -347,6 +347,13 @@ export default function Home({ selectedChatId }) {
           >
             <FiBookOpen className="w-6 h-6" />
           </button>
+
+          <button
+            onClick={() => router.push('/jobs')}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiBriefcase className="w-6 h-6" />
+          </button>
         </div>
 
         {/* Bottom Icons */}
@@ -426,6 +433,16 @@ export default function Home({ selectedChatId }) {
             className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
           >
             <FiBookOpen className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => {
+              router.push('/jobs');
+              setSidebarOpen(false);
+            }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiBriefcase className="w-6 h-6" />
           </button>
         </div>
 

@@ -99,10 +99,24 @@ export default function NotificationModal({ showNotifications, setShowNotificati
                           {notif.type === 'follow' && 'followed you'}
                           {notif.type === 'like' && 'liked your post'}
                           {(notif.type === 'connection_request' || notif.type === 'connect') && '(connects) he wants to help with your work'}
+                          {notif.type === 'job_alert' && 'posted a job matching your skills'}
                         </p>
                         
                         {/* Action Buttons based on notification type */}
-                        {notif.type === 'follow' || notif.type === 'message' || notif.type === 'connect' || notif.type === 'connection_request' ? (
+                        {notif.type === 'job_alert' ? (
+                          <div className="flex items-center gap-2 mt-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push('/jobs');
+                                setShowNotifications(false);
+                              }}
+                              className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all shadow shadow-blue-500/20 cursor-pointer"
+                            >
+                              View Jobs
+                            </button>
+                          </div>
+                        ) : notif.type === 'follow' || notif.type === 'message' || notif.type === 'connect' || notif.type === 'connection_request' ? (
                           <div className="flex items-center gap-2 mt-2">
                             <button
                               onClick={(e) => {

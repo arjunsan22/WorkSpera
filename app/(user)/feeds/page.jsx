@@ -5,7 +5,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaHeart, FaRegHeart, FaComment, FaShare, FaTimes, FaWhatsapp, FaBookmark, FaRegBookmark, FaCopy, FaExternalLinkAlt, FaExclamationTriangle } from 'react-icons/fa';
 import Link from "next/link";
-import { FiArrowLeft, FiUserPlus, FiMenu, FiUser, FiMessageSquare, FiBookOpen, FiBell, FiLogOut, FiRefreshCw, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiUserPlus, FiMenu, FiUser, FiMessageSquare, FiBookOpen, FiBriefcase, FiBell, FiLogOut, FiRefreshCw, FiX } from "react-icons/fi";
 import StoryFeed from "@/app/components/stories/StoryFeed";
 import ReactionModal from "@/app/components/user/ReactionModal";
 import NotificationModal from "@/app/components/user/NotificationModal";
@@ -627,6 +627,13 @@ export default function Feeds() {
           >
             <FiBookOpen className="w-6 h-6" />
           </button>
+
+          <button
+            onClick={() => router.push('/jobs')}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiBriefcase className="w-6 h-6" />
+          </button>
         </div>
 
         <div className="flex flex-col gap-3">
@@ -688,6 +695,13 @@ export default function Feeds() {
             className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all transform hover:scale-105"
           >
             <FiBookOpen className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => { router.push('/jobs'); setSidebarOpen(false); }}
+            className="p-3.5 rounded-2xl text-slate-400 hover:bg-slate-800/50 hover:text-slate-300 transition-all transform hover:scale-105"
+          >
+            <FiBriefcase className="w-6 h-6" />
           </button>
         </div>
 
