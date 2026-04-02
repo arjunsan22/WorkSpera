@@ -11,7 +11,7 @@ import ReactionModal from "@/app/components/user/ReactionModal";
 import NotificationModal from "@/app/components/user/NotificationModal";
 import ReportModal from "@/app/components/user/ReportModal";
 
-// Toast Component
+// Toast Component - Refined
 const Toast = ({ message, type = 'success', onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -19,19 +19,23 @@ const Toast = ({ message, type = 'success', onClose }) => {
   }, [onClose]);
 
   return (
-    <div className="fixed top-4 right-4 z-50 animate-slide-in">
-      <div className={`px-6 py-4 rounded-lg shadow-2xl backdrop-blur-lg border ${type === 'success'
-        ? 'bg-green-500/90 border-green-400/50'
-        : 'bg-red-500/90 border-red-400/50'
+    <motion.div
+      initial={{ opacity: 0, y: -20, x: 20 }}
+      animate={{ opacity: 1, y: 0, x: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="fixed top-6 right-6 z-[100]"
+    >
+      <div className={`px-5 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border flex items-center space-x-3 ${type === 'success'
+        ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+        : 'bg-rose-500/20 border-rose-500/30 text-rose-400'
         }`}>
-        <div className="flex items-center space-x-3">
-          <span className="text-white font-medium">{message}</span>
-          <button onClick={onClose} className="text-white/80 hover:text-white">
-            <FaTimes />
-          </button>
-        </div>
+        <div className={`w-2 h-2 rounded-full animate-pulse ${type === 'success' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+        <span className="font-medium text-sm">{message}</span>
+        <button onClick={onClose} className="hover:opacity-70 transition-opacity">
+          <FaTimes size={12} />
+        </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -701,13 +705,15 @@ export default function Feeds() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
+        <AnimatePresence>
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          )}
+        </AnimatePresence>
 
         {selectedPost && (
           <CommentsModal
@@ -1026,7 +1032,7 @@ export default function Feeds() {
                                   : '👍'
                                 }
                               </span>
-                              <span className="text-[14px] font-bold">
+                              <span className="text-[14px] font-bold hidden sm:inline">
                                 {post.isLiked ? (post.userReaction ? post.userReaction.charAt(0).toUpperCase() + post.userReaction.slice(1) : 'Like') : 'Like'}
                               </span>
                             </button>
@@ -1038,7 +1044,7 @@ export default function Feeds() {
                             className="flex-1 flex items-center justify-center gap-2 py-2 text-slate-400 hover:text-white hover:bg-slate-700/40 rounded-lg transition-all active:scale-95"
                           >
                             <FaComment className="text-lg" />
-                            <span className="text-[14px] font-bold">Comment</span>
+                            <span className="text-[14px] font-bold hidden sm:inline">Comment</span>
                           </button>
 
                           {/* Save Button */}
