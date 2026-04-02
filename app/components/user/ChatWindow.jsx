@@ -334,7 +334,7 @@ export default function ChatWindow({ chatId }) {
     return (
         <div className="flex flex-col h-full bg-slate-900/50 backdrop-blur-sm lg:rounded-3xl lg:border border-slate-700/50 overflow-hidden relative">
             {/* Header */}
-            <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 px-6 py-4 flex items-center justify-between shrink-0 z-10">
+            <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 px-6 pb-4 pt-12 lg:pt-4 flex items-center justify-between shrink-0 z-20">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => router.push('/chat')}

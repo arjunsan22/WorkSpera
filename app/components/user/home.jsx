@@ -289,8 +289,9 @@ export default function Home({ selectedChatId }) {
 
   return (
     <div className="flex h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans selection:bg-indigo-500/30">
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 shadow-sm">
+      {/* Mobile Header - Hide when chat is selected on mobile */}
+      {!selectedChatId && (
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 shadow-sm transition-all duration-300">
         <div className="flex items-center justify-between px-4 py-4">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -306,6 +307,7 @@ export default function Home({ selectedChatId }) {
           </button>
         </div>
       </div>
+      )}
 
       {/* Sidebar Overlay for Mobile */}
       <AnimatePresence>
@@ -415,7 +417,7 @@ export default function Home({ selectedChatId }) {
       </motion.div>
 
       {/* Chat List Panel */}
-      <div className={`${selectedChatId ? 'hidden lg:flex' : 'flex'} ${showFindUsers && !selectedChatId ? 'w-full' : 'w-full lg:w-96'} flex-col bg-slate-900/30 backdrop-blur-xl ${showFindUsers && !selectedChatId ? '' : 'border-r border-slate-700/50'} mt-16 lg:mt-0`}>
+      <div className={`${selectedChatId ? 'hidden lg:flex' : 'flex'} ${showFindUsers && !selectedChatId ? 'w-full' : 'w-full lg:w-96'} flex-col bg-slate-900/30 backdrop-blur-xl ${showFindUsers && !selectedChatId ? '' : 'border-r border-slate-700/50'} ${selectedChatId ? '' : 'mt-16'} lg:mt-0`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-700/50">
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
@@ -789,7 +791,7 @@ export default function Home({ selectedChatId }) {
       {/* Main Content — hidden when Find Users is active */}
       {!showFindUsers && (
         <div
-          className={`flex-1 overflow-hidden relative bg-slate-900/40 backdrop-blur-md mt-16 lg:mt-0 ${selectedChatId ? 'flex' : 'hidden lg:flex'
+          className={`flex-1 overflow-hidden relative bg-slate-900/40 backdrop-blur-md ${selectedChatId ? 'mt-0' : 'mt-16'} lg:mt-0 ${selectedChatId ? 'flex' : 'hidden lg:flex'
             }`}
         >
           {selectedChatId ? (
