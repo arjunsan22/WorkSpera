@@ -133,7 +133,6 @@ export default function LoginPage() {
             <h1 className="text-4xl md:text-5xl font-black tracking-tighter bg-gradient-to-br from-white via-slate-300 to-slate-500 bg-clip-text text-transparent mb-3">
               WrokSpera
             </h1>
-            <p className="text-slate-400 text-sm font-medium">Welcome back, pioneer.</p>
           </div>
 
           {/* Error Message */}
