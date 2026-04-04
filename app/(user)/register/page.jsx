@@ -155,7 +155,7 @@ export default function RegisterPage() {
   const passwordStrength = getPasswordStrength();
 
   return (
-    <div ref={containerRef} className="flex min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-slate-200 overflow-hidden font-sans selection:bg-indigo-500/30 relative">
+    <div ref={containerRef} className="flex min-h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans selection:bg-indigo-500/30 relative" style={{ backgroundImage: 'radial-gradient(ellipse at top, #0f172a, #020617, #000000)' }}>
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

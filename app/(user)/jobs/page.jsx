@@ -532,7 +532,7 @@ export default function Jobs() {
       </motion.div>
 
       {/* Main Container */}
-      <main className="flex-1 flex flex-col relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-[#020617]" style={{ backgroundImage: 'radial-gradient(ellipse at top, #0f172a, #020617, #000000)' }}>
         {/* Top Header Blur Effect */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
 
