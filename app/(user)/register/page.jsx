@@ -202,7 +202,7 @@ export default function RegisterPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="John Doe"
+                  placeholder=""
                   value={name}
                   onChange={(e) => handleFieldChange('name', e.target.value, setName)}
                   onBlur={() => handleBlur('name')}
@@ -222,7 +222,7 @@ export default function RegisterPage() {
                 </div>
                 <input
                   type="email"
-                  placeholder="name@work.com"
+                  placeholder=""
                   value={email}
                   onChange={(e) => handleFieldChange('email', e.target.value, setEmail)}
                   onBlur={() => handleBlur('email')}
@@ -242,7 +242,7 @@ export default function RegisterPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="johndoe_123"
+                  placeholder=""
                   value={username}
                   onChange={(e) => handleFieldChange('username', e.target.value, setUsername)}
                   onBlur={() => handleBlur('username')}
